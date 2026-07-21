@@ -7,7 +7,6 @@ Each file gets a SHA-256 hash for integrity verification.
 """
 
 import hashlib
-import shutil
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -21,9 +20,20 @@ settings = get_settings()
 UPLOAD_DIR = Path("/data/orogest/uploads")  # Override via env in production
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 ALLOWED_EXTENSIONS = {
-    ".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv",
-    ".jpg", ".jpeg", ".png", ".gif", ".webp",
-    ".txt", ".md", ".odt",
+    ".pdf",
+    ".docx",
+    ".doc",
+    ".xlsx",
+    ".xls",
+    ".csv",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+    ".txt",
+    ".md",
+    ".odt",
 }
 
 
@@ -39,8 +49,7 @@ def _validate_file(file: UploadFile, max_size: int = MAX_FILE_SIZE) -> str:
     ext = Path(file.filename).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise FileUploadError(
-            f"Extensión no permitida: {ext}. "
-            f"Permitidas: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+            f"Extensión no permitida: {ext}. Permitidas: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
         )
 
     return ext
@@ -83,7 +92,7 @@ async def save_uploaded_file(
 
     content = await file.read()
     if len(content) > max_size:
-        raise FileUploadError(f"Archivo excede el límite de {max_size // (1024*1024)} MB")
+        raise FileUploadError(f"Archivo excede el límite de {max_size // (1024 * 1024)} MB")
     if len(content) == 0:
         raise FileUploadError("Archivo vacío")
 

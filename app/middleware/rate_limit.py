@@ -33,9 +33,7 @@ class InMemoryRateLimiter:
     def _clean_window(self, key: str, window_seconds: int):
         now = time.time()
         if key in self._windows:
-            self._windows[key] = [
-                t for t in self._windows[key] if now - t < window_seconds
-            ]
+            self._windows[key] = [t for t in self._windows[key] if now - t < window_seconds]
 
     def check(self, key: str, max_requests: int, window_seconds: int = 60) -> tuple[bool, int]:
         """
@@ -63,7 +61,10 @@ _limiter = InMemoryRateLimiter()
 # ── Rate limit configurations ──
 RATE_LIMITS = {
     "/api/v1/ai/": {"max_requests": settings.CLAUDE_PROXY_RATE_LIMIT, "window": 60},
-    "/api/v1/orchestrator/execute": {"max_requests": settings.CLAUDE_PROXY_RATE_LIMIT, "window": 60},
+    "/api/v1/orchestrator/execute": {
+        "max_requests": settings.CLAUDE_PROXY_RATE_LIMIT,
+        "window": 60,
+    },
     "/api/v1/auth/login": {"max_requests": 10, "window": 300},  # 10 per 5 min by IP
     "default": {"max_requests": 120, "window": 60},
 }
@@ -121,7 +122,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if auth_header.startswith("Bearer "):
             # Extract sub from JWT without full validation (just for rate limit key)
             try:
-                import base64, json
+                import base64
+                import json
+
                 token = auth_header[7:]
                 payload = token.split(".")[1]
                 # Add padding

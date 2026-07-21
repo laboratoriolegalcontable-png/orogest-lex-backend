@@ -2,13 +2,11 @@
 OroGest Lex — Tests: Calculadora, Export, Files, Password
 """
 
-import io
 from datetime import date
 
 import pytest
 
 from app.services.export_service import (
-    ANTI_HALLUCINATION_WARNING,
     ESTUDIO_HEADER,
     FIRMA_LINES,
     _fallback_markdown,
@@ -86,8 +84,10 @@ class TestCalculadoraEndpoint:
     def test_basic_calculation_structure(self):
         """Verify the response structure has all required fields."""
         from app.api.v1.endpoints.calculadora import (
-            CalculoRequest, CalculoResponse, TipoContrato,
+            CalculoRequest,
+            TipoContrato,
         )
+
         req = CalculoRequest(
             fecha_ingreso=date(2020, 1, 1),
             fecha_egreso=date(2025, 3, 15),
@@ -162,6 +162,7 @@ class TestExportDocx:
     @pytest.mark.skipif(not HAS_DOCX, reason="python-docx not installed")
     def test_escrito_generates_bytes(self):
         from app.services.export_service import generate_escrito_docx
+
         result = generate_escrito_docx(
             tribunal="Tribunal Oral Criminal N° 5",
             causa="28979/2020",
@@ -174,11 +175,12 @@ class TestExportDocx:
         assert isinstance(result, bytes)
         assert len(result) > 1000  # A real docx is at least a few KB
         # DOCX magic bytes (PK zip format)
-        assert result[:2] == b'PK'
+        assert result[:2] == b"PK"
 
     @pytest.mark.skipif(not HAS_DOCX, reason="python-docx not installed")
     def test_carta_documento_generates(self):
         from app.services.export_service import generate_carta_documento_docx
+
         result = generate_carta_documento_docx(
             destinatario="Sr. Juan Pérez",
             domicilio_destinatario="Av. Corrientes 1234, CABA",
@@ -186,11 +188,12 @@ class TestExportDocx:
             cuerpo="Por la presente se lo intima a cumplir con el contrato...",
         )
         assert isinstance(result, bytes)
-        assert result[:2] == b'PK'
+        assert result[:2] == b"PK"
 
     @pytest.mark.skipif(not HAS_DOCX, reason="python-docx not installed")
     def test_due_diligence_report(self):
         from app.services.export_service import generate_due_diligence_report_docx
+
         result = generate_due_diligence_report_docx(
             property_data={
                 "title": "Depto Palermo",
@@ -210,7 +213,7 @@ class TestExportDocx:
             risk_level="amarillo",
         )
         assert isinstance(result, bytes)
-        assert result[:2] == b'PK'
+        assert result[:2] == b"PK"
 
 
 # ═══════════════════════════════════════════
@@ -241,18 +244,21 @@ class TestFileService:
     def test_validate_file_no_filename(self):
         class FakeFile:
             filename = None
+
         with pytest.raises(FileUploadError, match="sin nombre"):
             _validate_file(FakeFile())
 
     def test_validate_file_bad_extension(self):
         class FakeFile:
             filename = "malware.exe"
+
         with pytest.raises(FileUploadError, match="no permitida"):
             _validate_file(FakeFile())
 
     def test_validate_file_good_extension(self):
         class FakeFile:
             filename = "contrato.pdf"
+
         ext = _validate_file(FakeFile())
         assert ext == ".pdf"
 
@@ -263,6 +269,7 @@ class TestFileService:
 class TestPasswordLogic:
     def test_hash_and_verify(self):
         from app.core.security import hash_password, verify_password
+
         pw = "NuevaContraseña2026!"
         hashed = hash_password(pw)
         assert verify_password(pw, hashed)
@@ -281,7 +288,8 @@ class TestPasswordLogic:
 class TestRouteCompleteness:
     def test_all_expected_routes_exist(self):
         from app.main import app
-        paths = [route.path for route in app.routes if hasattr(route, 'path')]
+
+        paths = [route.path for route in app.routes if hasattr(route, "path")]
 
         expected_prefixes = [
             "/api/v1/auth",
@@ -306,18 +314,21 @@ class TestRouteCompleteness:
 
     def test_health_endpoint(self):
         from app.main import app
-        paths = [route.path for route in app.routes if hasattr(route, 'path')]
+
+        paths = [route.path for route in app.routes if hasattr(route, "path")]
         assert "/health" in paths
 
     def test_root_endpoint(self):
         from app.main import app
-        paths = [route.path for route in app.routes if hasattr(route, 'path')]
+
+        paths = [route.path for route in app.routes if hasattr(route, "path")]
         assert "/" in paths
 
     def test_route_count_reasonable(self):
         """Verify we have a substantial number of routes."""
         from app.main import app
-        api_routes = [r for r in app.routes if hasattr(r, 'path') and r.path.startswith("/api")]
+
+        api_routes = [r for r in app.routes if hasattr(r, "path") and r.path.startswith("/api")]
         assert len(api_routes) >= 30, f"Only {len(api_routes)} API routes found"
 
 

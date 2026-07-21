@@ -34,6 +34,15 @@ dev = [
 target-version = "py311"
 line-length = 100
 
+[tool.ruff.lint]
+# E712: "avoid == True/False" is a false positive across this codebase — every
+# occurrence is a SQLAlchemy ORM column comparison inside select()/where()
+# (e.g. `Case.is_deleted == False`), which builds a SQL predicate. Ruff's
+# suggested rewrite (`not Case.is_deleted`) evaluates Python truthiness of the
+# Column object instead and silently breaks the query, so the rule is disabled
+# rather than "fixed".
+ignore = ["E712"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

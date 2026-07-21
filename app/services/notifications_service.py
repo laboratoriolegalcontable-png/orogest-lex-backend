@@ -10,8 +10,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text, Boolean, select, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, Boolean, select, func
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -20,7 +20,7 @@ from app.db.base import Base, UUIDPrimaryKeyMixin, TimestampMixin
 
 class NotificationPriority(str, Enum):
     CRITICAL = "critical"  # 🚨 vence hoy / detenido
-    HIGH = "high"          # ⚠️ vence en 3 días
+    HIGH = "high"  # ⚠️ vence en 3 días
     NORMAL = "normal"
     LOW = "low"
 
@@ -44,9 +44,7 @@ class Notification(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (
-        Index("ix_notif_user_unread", "user_id", "is_read"),
-    )
+    __table_args__ = (Index("ix_notif_user_unread", "user_id", "is_read"),)
 
 
 # ═══════════════════════════════════════════
@@ -96,12 +94,14 @@ async def scan_upcoming_deadlines(db: AsyncSession) -> list[dict]:
     in_14_days = now + timedelta(days=14)
 
     result = await db.execute(
-        select(Case).where(
+        select(Case)
+        .where(
             Case.is_deleted == False,
             Case.next_deadline.isnot(None),
             Case.next_deadline >= now,
             Case.next_deadline <= in_14_days,
-        ).order_by(Case.next_deadline.asc())
+        )
+        .order_by(Case.next_deadline.asc())
     )
     cases = result.scalars().all()
 
@@ -114,7 +114,9 @@ async def scan_upcoming_deadlines(db: AsyncSession) -> list[dict]:
             title = f"🚨 VENCE HOY: {case.caption[:60]}"
         elif days_until <= 3:
             priority = "high"
-            title = f"⚠️ Vence en {days_until} día{'s' if days_until > 1 else ''}: {case.caption[:60]}"
+            title = (
+                f"⚠️ Vence en {days_until} día{'s' if days_until > 1 else ''}: {case.caption[:60]}"
+            )
         elif days_until <= 7:
             priority = "normal"
             title = f"Plazo próximo ({days_until} días): {case.caption[:60]}"
@@ -124,7 +126,9 @@ async def scan_upcoming_deadlines(db: AsyncSession) -> list[dict]:
 
         # Check if notification already exists for this deadline
         existing = await db.execute(
-            select(func.count()).select_from(Notification).where(
+            select(func.count())
+            .select_from(Notification)
+            .where(
                 Notification.resource_type == "case",
                 Notification.resource_id == str(case.id),
                 Notification.category == "deadline",
@@ -135,24 +139,26 @@ async def scan_upcoming_deadlines(db: AsyncSession) -> list[dict]:
             continue  # Already notified today
 
         if case.assigned_to:
-            notif = await create_notification(
+            await create_notification(
                 db=db,
                 user_id=case.assigned_to,
                 title=title,
                 message=f"Causa {case.internal_id} — {case.caption}\n"
-                        f"Tribunal: {case.court or 'N/D'}\n"
-                        f"Vencimiento: {case.next_deadline.strftime('%d/%m/%Y %H:%M')}",
+                f"Tribunal: {case.court or 'N/D'}\n"
+                f"Vencimiento: {case.next_deadline.strftime('%d/%m/%Y %H:%M')}",
                 category="deadline",
                 priority=priority,
                 resource_type="case",
                 resource_id=str(case.id),
             )
-            generated.append({
-                "case_id": str(case.id),
-                "internal_id": case.internal_id,
-                "priority": priority,
-                "days_until": days_until,
-            })
+            generated.append(
+                {
+                    "case_id": str(case.id),
+                    "internal_id": case.internal_id,
+                    "priority": priority,
+                    "days_until": days_until,
+                }
+            )
 
     return generated
 
@@ -204,7 +210,9 @@ async def mark_all_read(db: AsyncSession, user_id: uuid.UUID) -> int:
 
 async def get_unread_count(db: AsyncSession, user_id: uuid.UUID) -> int:
     result = await db.execute(
-        select(func.count()).select_from(Notification).where(
+        select(func.count())
+        .select_from(Notification)
+        .where(
             Notification.user_id == user_id,
             Notification.is_read == False,
         )

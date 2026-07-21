@@ -11,7 +11,7 @@ from app.api.deps import get_current_user, RequirePermission
 from app.core.security import Permission
 from app.db.session import get_db
 from app.models.models import User
-from app.agents.orchestrator import OrchestratorTask, classify_request
+from app.agents.orchestrator import OrchestratorTask
 from app.services.ai_service import create_or_continue_conversation
 from app.services.audit_service import create_audit_entry
 
@@ -81,6 +81,7 @@ async def classify_and_execute(
 
     # Step 2: Execute via Claude with the appropriate workflow
     import uuid as uuid_mod
+
     case_uuid = uuid_mod.UUID(body.case_id) if body.case_id else None
 
     try:

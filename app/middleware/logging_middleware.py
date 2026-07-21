@@ -85,6 +85,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             try:
                 import base64
                 import json
+
                 payload = auth[7:].split(".")[1]
                 payload += "=" * (4 - len(payload) % 4)
                 decoded = json.loads(base64.urlsafe_b64decode(payload))

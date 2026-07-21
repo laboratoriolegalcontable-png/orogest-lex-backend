@@ -7,13 +7,12 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import RequirePermission, RequireRole
 from app.core.security import Permission, Role
 from app.db.session import get_db
-from app.models.models import Case, Document, User
+from app.models.models import Case, User
 from app.services.audit_service import create_audit_entry
 
 router = APIRouter(prefix="/batch", tags=["batch"])
@@ -60,8 +59,11 @@ async def batch_update_case_status(
         updated += 1
 
         await create_audit_entry(
-            db, action="case.batch_update", user_id=user.id,
-            resource_type="case", resource_id=str(case_id),
+            db,
+            action="case.batch_update",
+            user_id=user.id,
+            resource_type="case",
+            resource_id=str(case_id),
             details={"old_status": old_status, "new_status": body.new_status, "batch": True},
             ip_address=request.client.host if request.client else None,
         )
@@ -103,8 +105,11 @@ async def batch_assign_cases(
         updated += 1
 
         await create_audit_entry(
-            db, action="case.batch_assign", user_id=user.id,
-            resource_type="case", resource_id=str(case_id),
+            db,
+            action="case.batch_assign",
+            user_id=user.id,
+            resource_type="case",
+            resource_id=str(case_id),
             details={
                 "old_assigned": old_assigned,
                 "new_assigned": str(body.assign_to),
@@ -155,7 +160,9 @@ async def batch_tag_cases(
 
     if updated > 0:
         await create_audit_entry(
-            db, action="case.batch_tag", user_id=user.id,
+            db,
+            action="case.batch_tag",
+            user_id=user.id,
             details={
                 "tag": f"{body.tag_key}={body.tag_value}",
                 "count": updated,

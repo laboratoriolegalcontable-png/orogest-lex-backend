@@ -13,16 +13,14 @@ All docs carry: Estudio Oro S.A.S. header, firma, fecha, anti-hallucination warn
 
 import io
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
 
 # We use python-docx for DOCX generation
 # If not available, fall back to Markdown export
 try:
     from docx import Document as DocxDocument
-    from docx.shared import Pt, Inches, Cm, RGBColor
+    from docx.shared import Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.enum.section import WD_ORIENT
+
     HAS_DOCX = True
 except ImportError:
     HAS_DOCX = False
@@ -100,9 +98,14 @@ def generate_escrito_docx(
     """
     if not HAS_DOCX:
         return _fallback_markdown(
-            "ESCRITO JUDICIAL", tribunal=tribunal, causa=causa,
-            caratula=caratula, objeto=objeto, hechos=hechos,
-            derecho=derecho, petitorio=petitorio,
+            "ESCRITO JUDICIAL",
+            tribunal=tribunal,
+            causa=causa,
+            caratula=caratula,
+            objeto=objeto,
+            hechos=hechos,
+            derecho=derecho,
+            petitorio=petitorio,
         )
 
     doc = DocxDocument()
@@ -182,8 +185,10 @@ def generate_carta_documento_docx(
     """
     if not HAS_DOCX:
         return _fallback_markdown(
-            "CARTA DOCUMENTO", destinatario=destinatario,
-            asunto=asunto, cuerpo=cuerpo,
+            "CARTA DOCUMENTO",
+            destinatario=destinatario,
+            asunto=asunto,
+            cuerpo=cuerpo,
         )
 
     doc = DocxDocument()
@@ -288,9 +293,7 @@ def generate_due_diligence_report_docx(
     run2.bold = True
     run2.font.size = Pt(12)
 
-    status_icons = {
-        "ok": "✅", "problema": "❌", "pendiente": "⏳", "no_aplica": "➖"
-    }
+    status_icons = {"ok": "✅", "problema": "❌", "pendiente": "⏳", "no_aplica": "➖"}
 
     for key, item in checklist.items():
         status = item.get("status", "pendiente")

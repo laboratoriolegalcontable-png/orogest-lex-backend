@@ -144,7 +144,9 @@ class DocumentResponse(BaseModel):
 class AIQueryRequest(BaseModel):
     message: str = Field(min_length=1, max_length=10000)
     case_id: uuid.UUID | None = None
-    workflow: str | None = None  # escrito_blindado / due_diligence / estrategia_procesal / escudo_patrimonial
+    workflow: str | None = (
+        None  # escrito_blindado / due_diligence / estrategia_procesal / escudo_patrimonial
+    )
     system_prompt_override: str | None = None
 
 

@@ -83,9 +83,7 @@ async def refresh_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)
             raise HTTPException(status_code=401, detail="Token no es refresh")
 
         user_id = payload.get("sub")
-        result = await db.execute(
-            select(User).where(User.id == user_id, User.is_deleted == False)
-        )
+        result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
         user = result.scalar_one_or_none()
         if not user or not user.is_active:
             raise HTTPException(status_code=401, detail="Usuario inválido")
@@ -169,7 +167,9 @@ async def change_password(
     current_user.hashed_password = hash_password(body.new_password)
 
     await create_audit_entry(
-        db, action="user.password_change", user_id=current_user.id,
+        db,
+        action="user.password_change",
+        user_id=current_user.id,
         ip_address=request.client.host if request.client else None,
     )
 
@@ -189,12 +189,16 @@ async def reset_password(
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     import secrets
+
     temp_password = secrets.token_urlsafe(12)
     user.hashed_password = hash_password(temp_password)
 
     await create_audit_entry(
-        db, action="user.password_reset", user_id=current_user.id,
-        resource_type="user", resource_id=str(user.id),
+        db,
+        action="user.password_reset",
+        user_id=current_user.id,
+        resource_type="user",
+        resource_id=str(user.id),
         ip_address=request.client.host if request.client else None,
     )
 

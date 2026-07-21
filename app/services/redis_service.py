@@ -144,7 +144,9 @@ class RedisRateLimiter:
                 await r.zrem(full_key, str(now))
                 # Calculate retry-after from oldest entry
                 oldest = await r.zrange(full_key, 0, 0, withscores=True)
-                retry_after = int(window_seconds - (now - oldest[0][1])) if oldest else window_seconds
+                retry_after = (
+                    int(window_seconds - (now - oldest[0][1])) if oldest else window_seconds
+                )
                 return False, 0, max(1, retry_after)
 
             remaining = max_requests - current_count - 1

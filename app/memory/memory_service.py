@@ -12,11 +12,9 @@ This is NOT magic memory — it's vector similarity search over stored text chun
 """
 
 import uuid
-from datetime import datetime, timezone
 
-import httpx
-from sqlalchemy import Column, DateTime, Float, Index, Integer, String, Text, select, text
-from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy import Index, Integer, String, Text, select
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -36,6 +34,7 @@ class MemoryChunk(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     A chunk of text stored for retrieval.
     Each chunk belongs to a source (case, document, conversation, property).
     """
+
     __tablename__ = "memory_chunks"
 
     # Source reference
@@ -80,7 +79,7 @@ def chunk_text(text: str, max_chars: int = 1500, overlap: int = 200) -> list[str
 
     for para in paragraphs:
         if len(current_chunk) + len(para) + 2 <= max_chars:
-            current_chunk += ("\n\n" + para if current_chunk else para)
+            current_chunk += "\n\n" + para if current_chunk else para
         else:
             if current_chunk:
                 chunks.append(current_chunk.strip())
@@ -90,7 +89,7 @@ def chunk_text(text: str, max_chars: int = 1500, overlap: int = 200) -> list[str
                 current_chunk = ""
                 for sent in sentences:
                     if len(current_chunk) + len(sent) + 1 <= max_chars:
-                        current_chunk += (" " + sent if current_chunk else sent)
+                        current_chunk += " " + sent if current_chunk else sent
                     else:
                         if current_chunk:
                             chunks.append(current_chunk.strip())
@@ -158,9 +157,7 @@ async def search_memory(
     For vector similarity, pgvector extension + embeddings needed.
     """
     # PostgreSQL full-text search
-    stmt = select(MemoryChunk).where(
-        MemoryChunk.content.ilike(f"%{query}%")
-    )
+    stmt = select(MemoryChunk).where(MemoryChunk.content.ilike(f"%{query}%"))
 
     if branch:
         stmt = stmt.where(MemoryChunk.branch == branch)
@@ -207,9 +204,7 @@ async def get_context_for_query(
 
     # If we have a case_id, also fetch case-specific chunks
     if case_id:
-        case_chunks = await search_memory(
-            db, query, source_type="case", limit=3
-        )
+        case_chunks = await search_memory(db, query, source_type="case", limit=3)
         # Merge, dedup by id
         seen_ids = {c.id for c in chunks}
         for cc in case_chunks:

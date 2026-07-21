@@ -4,7 +4,6 @@ OroGest Lex — Tests: Clients, Templates, Timeline, Batch
 
 import re
 import uuid
-from datetime import date
 
 import pytest
 
@@ -15,11 +14,13 @@ import pytest
 class TestClientModel:
     def test_client_importable(self):
         from app.models.models import Client, CaseClient
+
         assert Client.__tablename__ == "clients"
         assert CaseClient.__tablename__ == "case_clients"
 
     def test_client_schema(self):
         from app.api.v1.endpoints.clients import ClientCreate
+
         client = ClientCreate(
             full_name="Juan Pérez",
             document_type="DNI",
@@ -35,6 +36,7 @@ class TestClientModel:
 
     def test_client_pep_tracking(self):
         from app.api.v1.endpoints.clients import ClientCreate
+
         pep_client = ClientCreate(
             full_name="Funcionario X",
             document_type="CUIT",
@@ -46,6 +48,7 @@ class TestClientModel:
 
     def test_link_request_schema(self):
         from app.api.v1.endpoints.clients import LinkClientRequest
+
         link = LinkClientRequest(
             client_id=uuid.uuid4(),
             case_id=uuid.uuid4(),
@@ -61,10 +64,12 @@ class TestClientModel:
 class TestWritingTemplates:
     def test_template_model_importable(self):
         from app.models.models import WritingTemplate
+
         assert WritingTemplate.__tablename__ == "writing_templates"
 
     def test_system_templates_exist(self):
         from app.api.v1.endpoints.templates import SYSTEM_TEMPLATES
+
         assert len(SYSTEM_TEMPLATES) >= 3
 
         # Check required fields
@@ -78,6 +83,7 @@ class TestWritingTemplates:
 
     def test_nulidad_template_has_placeholders(self):
         from app.api.v1.endpoints.templates import SYSTEM_TEMPLATES
+
         nulidad = next(t for t in SYSTEM_TEMPLATES if "nulidad" in t["name"].lower())
         content = nulidad["template_content"]
 
@@ -112,12 +118,14 @@ class TestWritingTemplates:
 
     def test_morigeration_template(self):
         from app.api.v1.endpoints.templates import SYSTEM_TEMPLATES
+
         morig = next(t for t in SYSTEM_TEMPLATES if "morigeración" in t["name"].lower())
         assert "24.660" in morig["template_content"]
         assert "DOMICILIARIO" in morig["template_content"]
 
     def test_carta_documento_template(self):
         from app.api.v1.endpoints.templates import SYSTEM_TEMPLATES
+
         carta = next(t for t in SYSTEM_TEMPLATES if "carta documento" in t["name"].lower())
         assert "48" in carta["template_content"]  # 48 hours
         assert "fehacientemente" in carta["template_content"]
@@ -129,6 +137,7 @@ class TestWritingTemplates:
 class TestTimeline:
     def test_action_labels_complete(self):
         from app.api.v1.endpoints.timeline import ACTION_LABELS
+
         assert "case.create" in ACTION_LABELS
         assert "document.create" in ACTION_LABELS
         assert "ai.query" in ACTION_LABELS
@@ -137,6 +146,7 @@ class TestTimeline:
 
     def test_action_labels_are_spanish(self):
         from app.api.v1.endpoints.timeline import ACTION_LABELS
+
         for key, label in ACTION_LABELS.items():
             # Labels should be in Spanish
             assert len(label) > 5, f"Label too short for {key}: {label}"
@@ -148,6 +158,7 @@ class TestTimeline:
 class TestBatchOperations:
     def test_batch_status_schema(self):
         from app.api.v1.endpoints.batch import BatchStatusUpdate
+
         batch = BatchStatusUpdate(
             case_ids=[uuid.uuid4(), uuid.uuid4(), uuid.uuid4()],
             new_status="archivada",
@@ -157,6 +168,7 @@ class TestBatchOperations:
 
     def test_batch_assign_schema(self):
         from app.api.v1.endpoints.batch import BatchAssign
+
         batch = BatchAssign(
             case_ids=[uuid.uuid4()],
             assign_to=uuid.uuid4(),
@@ -165,6 +177,7 @@ class TestBatchOperations:
 
     def test_batch_tag_schema(self):
         from app.api.v1.endpoints.batch import BatchTagRequest
+
         batch = BatchTagRequest(
             case_ids=[uuid.uuid4(), uuid.uuid4()],
             tag_key="prioridad",
@@ -176,6 +189,7 @@ class TestBatchOperations:
         """Batch operations should limit to 50 items."""
         from app.api.v1.endpoints.batch import BatchStatusUpdate
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             BatchStatusUpdate(
                 case_ids=[uuid.uuid4() for _ in range(51)],
@@ -185,6 +199,7 @@ class TestBatchOperations:
     def test_batch_min_1(self):
         from app.api.v1.endpoints.batch import BatchStatusUpdate
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             BatchStatusUpdate(case_ids=[], new_status="archivada")
 
@@ -195,6 +210,7 @@ class TestBatchOperations:
 class TestCLI:
     def test_cli_importable(self):
         from scripts.cli import main, cmd_stats, cmd_verify_audit
+
         assert callable(main)
         assert callable(cmd_stats)
         assert callable(cmd_verify_audit)
@@ -206,7 +222,8 @@ class TestCLI:
 class TestRouteCompletenessV2:
     def test_all_new_routes_exist(self):
         from app.main import app
-        paths = [r.path for r in app.routes if hasattr(r, 'path')]
+
+        paths = [r.path for r in app.routes if hasattr(r, "path")]
 
         new_prefixes = [
             "/api/v1/clients",
@@ -220,12 +237,14 @@ class TestRouteCompletenessV2:
 
     def test_total_routes_over_60(self):
         from app.main import app
-        api_routes = [r for r in app.routes if hasattr(r, 'path') and r.path.startswith("/api")]
+
+        api_routes = [r for r in app.routes if hasattr(r, "path") and r.path.startswith("/api")]
         assert len(api_routes) >= 60, f"Only {len(api_routes)} API routes"
 
     def test_client_crud_routes(self):
         from app.main import app
-        paths = [r.path for r in app.routes if hasattr(r, 'path')]
+
+        paths = [r.path for r in app.routes if hasattr(r, "path")]
         assert "/api/v1/clients/" in paths
         assert "/api/v1/clients/{client_id}" in paths
         assert "/api/v1/clients/link-case" in paths
@@ -233,7 +252,8 @@ class TestRouteCompletenessV2:
 
     def test_template_routes(self):
         from app.main import app
-        paths = [r.path for r in app.routes if hasattr(r, 'path')]
+
+        paths = [r.path for r in app.routes if hasattr(r, "path")]
         assert "/api/v1/templates/" in paths
         assert "/api/v1/templates/{template_id}" in paths
         assert "/api/v1/templates/{template_id}/render" in paths
@@ -241,7 +261,8 @@ class TestRouteCompletenessV2:
 
     def test_batch_routes(self):
         from app.main import app
-        paths = [r.path for r in app.routes if hasattr(r, 'path')]
+
+        paths = [r.path for r in app.routes if hasattr(r, "path")]
         assert "/api/v1/batch/cases/update-status" in paths
         assert "/api/v1/batch/cases/assign" in paths
         assert "/api/v1/batch/cases/tag" in paths
@@ -253,27 +274,41 @@ class TestRouteCompletenessV2:
 class TestModelCompleteness:
     def test_all_models_importable(self):
         from app.models.models import (
-            User, Case, Document, Property,
-            AIConversation, AuditLog,
-            Client, CaseClient, WritingTemplate,
+            User,
+            Case,
+            Document,
+            Property,
+            AIConversation,
+            AuditLog,
+            Client,
+            CaseClient,
+            WritingTemplate,
         )
+
         # 9 main models
         tables = [
-            User.__tablename__, Case.__tablename__, Document.__tablename__,
-            Property.__tablename__, AIConversation.__tablename__,
-            AuditLog.__tablename__, Client.__tablename__,
-            CaseClient.__tablename__, WritingTemplate.__tablename__,
+            User.__tablename__,
+            Case.__tablename__,
+            Document.__tablename__,
+            Property.__tablename__,
+            AIConversation.__tablename__,
+            AuditLog.__tablename__,
+            Client.__tablename__,
+            CaseClient.__tablename__,
+            WritingTemplate.__tablename__,
         ]
         assert len(set(tables)) == 9
 
     def test_case_client_many_to_many(self):
         from app.models.models import CaseClient
+
         assert hasattr(CaseClient, "case_id")
         assert hasattr(CaseClient, "client_id")
         assert hasattr(CaseClient, "role")
 
     def test_writing_template_fields(self):
         from app.models.models import WritingTemplate
+
         assert hasattr(WritingTemplate, "template_content")
         assert hasattr(WritingTemplate, "variables_schema")
         assert hasattr(WritingTemplate, "usage_count")

@@ -6,7 +6,7 @@ Rate limited, audited, anti-hallucination enforced.
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import RequirePermission, get_current_user
+from app.api.deps import RequirePermission
 from app.core.security import Permission
 from app.db.session import get_db
 from app.models.models import User
@@ -126,7 +126,10 @@ async def ai_draft(
         user_id=user.id,
         resource_type="ai_conversation",
         resource_id=str(conversation.id),
-        details={"tokens": result["tokens_used"], "case_id": str(body.case_id) if body.case_id else None},
+        details={
+            "tokens": result["tokens_used"],
+            "case_id": str(body.case_id) if body.case_id else None,
+        },
         ip_address=request.client.host if request.client else None,
     )
 

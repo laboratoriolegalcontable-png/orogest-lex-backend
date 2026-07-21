@@ -60,11 +60,13 @@ async def _event_generator(user_id: str):
     queue = _event_queues[queue_key]
 
     # Send initial connection event
-    yield _format_sse({
-        "type": "connected",
-        "data": {"message": "OroGest Lex real-time stream connected"},
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    yield _format_sse(
+        {
+            "type": "connected",
+            "data": {"message": "OroGest Lex real-time stream connected"},
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    )
 
     try:
         while True:

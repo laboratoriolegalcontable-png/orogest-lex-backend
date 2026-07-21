@@ -9,14 +9,13 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import RequirePermission, get_current_user
+from app.api.deps import RequirePermission
 from app.core.security import Permission
 from app.db.session import get_db
 from app.models.models import Document, User
 from app.services.audit_service import create_audit_entry
 from app.services.file_service import (
     FileUploadError,
-    delete_file,
     get_file_full_path,
     save_uploaded_file,
 )
@@ -60,8 +59,11 @@ async def upload_file(
 
     if request:
         await create_audit_entry(
-            db, action="file.upload", user_id=user.id,
-            resource_type="document", resource_id=str(doc.id),
+            db,
+            action="file.upload",
+            user_id=user.id,
+            resource_type="document",
+            resource_id=str(doc.id),
             details={
                 "filename": file_info["file_name"],
                 "size_bytes": file_info["file_size"],

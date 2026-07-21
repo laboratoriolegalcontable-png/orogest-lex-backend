@@ -7,10 +7,10 @@ import hashlib
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import RequirePermission, get_current_user
+from app.api.deps import RequirePermission
 from app.core.security import Permission
 from app.db.session import get_db
 from app.models.models import Document, User
@@ -81,6 +81,7 @@ async def create_document(
     if body.content:
         try:
             from app.memory.memory_service import store_memory
+
             await store_memory(
                 db=db,
                 content=body.content,
@@ -141,6 +142,7 @@ async def update_document(
 
     # Soft-delete old version
     from datetime import datetime, timezone
+
     old_doc.is_deleted = True
     old_doc.deleted_at = datetime.now(timezone.utc)
 
@@ -150,6 +152,7 @@ async def update_document(
     if body.content:
         try:
             from app.memory.memory_service import delete_memory_by_source, store_memory
+
             await delete_memory_by_source(db, "document", str(old_doc.id))
             await store_memory(
                 db=db,
@@ -213,12 +216,14 @@ async def delete_document(
         raise HTTPException(status_code=404, detail="Documento no encontrado")
 
     from datetime import datetime, timezone
+
     doc.is_deleted = True
     doc.deleted_at = datetime.now(timezone.utc)
 
     # Clean memory
     try:
         from app.memory.memory_service import delete_memory_by_source
+
         await delete_memory_by_source(db, "document", str(doc.id))
     except Exception:
         pass

@@ -27,9 +27,7 @@ async def create_audit_entry(
 
     # Get the last hash in the chain
     result = await db.execute(
-        select(AuditLog.current_hash)
-        .order_by(AuditLog.timestamp.desc())
-        .limit(1)
+        select(AuditLog.current_hash).order_by(AuditLog.timestamp.desc()).limit(1)
     )
     last_hash = result.scalar_one_or_none() or "GENESIS"
 

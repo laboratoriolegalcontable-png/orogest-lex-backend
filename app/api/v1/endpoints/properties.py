@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import RequirePermission, get_current_user
+from app.api.deps import RequirePermission
 from app.core.security import Permission
 from app.db.session import get_db
 from app.models.models import Property, User
@@ -30,8 +30,14 @@ DD_CHECKLIST_ARG = {
     "hipotecas_embargos": {"label": "Hipotecas / Embargos", "status": "pendiente"},
     "planos_municipales": {"label": "Planos municipales + subdivisión", "status": "pendiente"},
     "certificado_agip_arba": {"label": "Certificados no deuda AGIP / ARBA", "status": "pendiente"},
-    "uif_pep_check": {"label": "UIF: PEP check vendedor/comprador (Res. UIF 21/2023)", "status": "pendiente"},
-    "cadena_dominio": {"label": "Boleto → Escritura → Posesión: cadena completa", "status": "pendiente"},
+    "uif_pep_check": {
+        "label": "UIF: PEP check vendedor/comprador (Res. UIF 21/2023)",
+        "status": "pendiente",
+    },
+    "cadena_dominio": {
+        "label": "Boleto → Escritura → Posesión: cadena completa",
+        "status": "pendiente",
+    },
     "indice_aplicable": {"label": "Índice aplicable: UVA / CER / libre", "status": "pendiente"},
 }
 
@@ -45,10 +51,16 @@ DD_CHECKLIST_ESP = {
 }
 
 DD_CHECKLIST_URY = {
-    "certificado_dominio": {"label": "Certificado de dominio Registro de la Propiedad", "status": "pendiente"},
+    "certificado_dominio": {
+        "label": "Certificado de dominio Registro de la Propiedad",
+        "status": "pendiente",
+    },
     "bps_dgi": {"label": "BPS / DGI: deudas del vendedor", "status": "pendiente"},
     "plano_mensura": {"label": "Plano mensura aprobado", "status": "pendiente"},
-    "promesa_compraventa": {"label": "Promesa de compraventa con fecha cierta", "status": "pendiente"},
+    "promesa_compraventa": {
+        "label": "Promesa de compraventa con fecha cierta",
+        "status": "pendiente",
+    },
 }
 
 
@@ -194,10 +206,7 @@ async def update_due_diligence(
     prop.dd_risk_level = compute_risk_level(checklist)
 
     # Check if DD is complete
-    all_resolved = all(
-        item.get("status") in ("ok", "no_aplica")
-        for item in checklist.values()
-    )
+    all_resolved = all(item.get("status") in ("ok", "no_aplica") for item in checklist.values())
     if all_resolved:
         prop.dd_completed_at = datetime.now(timezone.utc)
         prop.status = "en_due_diligence"  # could transition to "publicado"

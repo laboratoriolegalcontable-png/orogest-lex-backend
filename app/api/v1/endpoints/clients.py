@@ -8,10 +8,10 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import RequirePermission, get_current_user
+from app.api.deps import RequirePermission
 from app.core.security import Permission
 from app.db.session import get_db
 from app.models.models import CaseClient, Client, User
@@ -96,11 +96,13 @@ async def list_clients(
 
     if q:
         pattern = f"%{q}%"
-        stmt = stmt.where(or_(
-            Client.full_name.ilike(pattern),
-            Client.document_number.ilike(pattern),
-            Client.email.ilike(pattern),
-        ))
+        stmt = stmt.where(
+            or_(
+                Client.full_name.ilike(pattern),
+                Client.document_number.ilike(pattern),
+                Client.email.ilike(pattern),
+            )
+        )
     if client_type:
         stmt = stmt.where(Client.client_type == client_type)
     if pep_only:
@@ -146,8 +148,11 @@ async def create_client(
     await db.flush()
 
     await create_audit_entry(
-        db, action="client.create", user_id=user.id,
-        resource_type="client", resource_id=str(client.id),
+        db,
+        action="client.create",
+        user_id=user.id,
+        resource_type="client",
+        resource_id=str(client.id),
         details={"name": client.full_name, "type": client.client_type, "pep": client.is_pep},
         ip_address=request.client.host if request.client else None,
     )
@@ -182,8 +187,11 @@ async def update_client(
 
     if changes:
         await create_audit_entry(
-            db, action="client.update", user_id=user.id,
-            resource_type="client", resource_id=str(client.id),
+            db,
+            action="client.update",
+            user_id=user.id,
+            resource_type="client",
+            resource_id=str(client.id),
             details={"changes": changes},
             ip_address=request.client.host if request.client else None,
         )
@@ -210,10 +218,14 @@ async def link_client_to_case(
     try:
         await db.flush()
     except Exception:
-        raise HTTPException(status_code=409, detail="Este cliente ya está vinculado a la causa con ese rol")
+        raise HTTPException(
+            status_code=409, detail="Este cliente ya está vinculado a la causa con ese rol"
+        )
 
     await create_audit_entry(
-        db, action="client.link_case", user_id=user.id,
+        db,
+        action="client.link_case",
+        user_id=user.id,
         resource_type="case_client",
         details={"case_id": str(body.case_id), "client_id": str(body.client_id), "role": body.role},
         ip_address=request.client.host if request.client else None,
@@ -229,9 +241,7 @@ async def get_client_cases(
     user: User = Depends(RequirePermission(Permission.CASES_READ)),
 ):
     """Get all cases for a specific client."""
-    result = await db.execute(
-        select(CaseClient).where(CaseClient.client_id == client_id)
-    )
+    result = await db.execute(select(CaseClient).where(CaseClient.client_id == client_id))
     links = result.scalars().all()
 
     return [

@@ -22,6 +22,7 @@ _raw_key = settings.ENCRYPTION_KEY.encode("utf-8")
 if len(_raw_key) < 32:
     # Pad with SHA-256 if key is too short (dev only — production should use proper 32-byte key)
     import hashlib
+
     _key = hashlib.sha256(_raw_key).digest()
 else:
     _key = _raw_key[:32]

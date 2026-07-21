@@ -36,6 +36,7 @@ async def lifespan(app: FastAPI):
     # Try connecting to Redis
     try:
         from app.services.redis_service import get_redis
+
         redis = await get_redis()
         await redis.ping()
         logger.info("Redis connected ✅")
@@ -53,6 +54,7 @@ async def lifespan(app: FastAPI):
     # ── Shutdown ──
     try:
         from app.services.redis_service import close_redis
+
         await close_redis()
         logger.info("Redis disconnected")
     except Exception:
@@ -89,7 +91,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Request-ID", "X-Response-Time", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
+    expose_headers=[
+        "X-Request-ID",
+        "X-Response-Time",
+        "X-RateLimit-Limit",
+        "X-RateLimit-Remaining",
+    ],
 )
 
 # ── Routes ──
@@ -123,6 +130,7 @@ async def health_check():
     # Redis check
     try:
         from app.services.redis_service import get_redis
+
         redis = await get_redis()
         await redis.ping()
         health["redis"] = "connected"

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
 
-from jose import JWTError, jwt
+from jose import jwt
 from passlib.context import CryptContext
 
 from app.core.config import get_settings
@@ -58,6 +58,7 @@ class Role(str, Enum):
     ASISTENTE = asistentes administrativos
     PASANTE = acceso solo lectura limitado
     """
+
     DIRECTOR = "director"
     ABOGADO = "abogado"
     ASISTENTE = "asistente"

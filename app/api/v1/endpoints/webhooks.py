@@ -12,13 +12,12 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
-from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import select
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import httpx
 
-from app.api.deps import RequireRole, get_current_user
+from app.api.deps import RequireRole
 from app.core.config import get_settings
 from app.core.security import Role
 from app.db.session import get_db
@@ -44,6 +43,7 @@ class WebhookRegister(BaseModel):
 
 class WhatsAppInbound(BaseModel):
     """Inbound message from N8n WhatsApp integration."""
+
     phone: str
     message: str
     name: str | None = None
@@ -52,6 +52,7 @@ class WhatsAppInbound(BaseModel):
 
 class N8nTrigger(BaseModel):
     """Generic N8n webhook trigger."""
+
     workflow_id: str | None = None
     event: str
     data: dict
@@ -81,7 +82,9 @@ async def register_webhook(
     }
 
     await create_audit_entry(
-        db, action="webhook.register", user_id=user.id,
+        db,
+        action="webhook.register",
+        user_id=user.id,
         details={"webhook_id": webhook_id, "url": body.url, "events": body.events},
         ip_address=request.client.host if request.client else None,
     )
@@ -96,8 +99,7 @@ async def list_webhooks(
     """List all registered webhooks."""
     return {
         "webhooks": [
-            {k: v for k, v in wh.items() if k != "secret"}
-            for wh in _webhook_registry.values()
+            {k: v for k, v in wh.items() if k != "secret"} for wh in _webhook_registry.values()
         ]
     }
 
@@ -114,7 +116,9 @@ async def delete_webhook(
     del _webhook_registry[webhook_id]
 
     await create_audit_entry(
-        db, action="webhook.delete", user_id=user.id,
+        db,
+        action="webhook.delete",
+        user_id=user.id,
         details={"webhook_id": webhook_id},
         ip_address=request.client.host if request.client else None,
     )
@@ -144,6 +148,7 @@ async def dispatch_webhook_event(event: str, payload: dict):
         # HMAC signature if secret configured
         if wh.get("secret"):
             import json
+
             sig = hmac.new(
                 wh["secret"].encode(), json.dumps(body, sort_keys=True).encode(), hashlib.sha256
             ).hexdigest()
@@ -181,11 +186,13 @@ async def whatsapp_inbound(
 
     # Classify the incoming message
     from app.agents.orchestrator import classify_request
+
     classification = classify_request(body.message)
 
     # Log it
     await create_audit_entry(
-        db, action="webhook.whatsapp.inbound",
+        db,
+        action="webhook.whatsapp.inbound",
         details={
             "phone": body.phone[-4:],  # Only last 4 digits for privacy
             "domain": classification.domain.value,
@@ -216,7 +223,6 @@ async def whatsapp_inbound(
 
 def _suggest_whatsapp_action(classification) -> str:
     """Suggest next action based on message classification."""
-    from app.agents.orchestrator import Urgency, Domain
 
     if classification.urgency.value == "critica":
         return "URGENT: Derivar al Dr. Orosa inmediatamente. Llamar al +54 11 6877-7777."
@@ -247,8 +253,13 @@ async def n8n_trigger(
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
     await create_audit_entry(
-        db, action=f"webhook.n8n.{body.event}",
-        details={"workflow_id": body.workflow_id, "event": body.event, "data_keys": list(body.data.keys())},
+        db,
+        action=f"webhook.n8n.{body.event}",
+        details={
+            "workflow_id": body.workflow_id,
+            "event": body.event,
+            "data_keys": list(body.data.keys()),
+        },
         ip_address=request.client.host if request.client else None,
     )
 

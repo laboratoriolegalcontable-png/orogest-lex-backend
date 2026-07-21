@@ -113,7 +113,9 @@ class TestAuditHash:
 # ═══════════════════════════════════════════
 class TestClassifier:
     def test_penal_classification(self):
-        result = classify_request("Necesito redactar una nulidad para la causa penal por cadena de custodia")
+        result = classify_request(
+            "Necesito redactar una nulidad para la causa penal por cadena de custodia"
+        )
         assert result.domain == Domain.PENAL
         assert result.workflow == Workflow.ESCRITO_BLINDADO
 
