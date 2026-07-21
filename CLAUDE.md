@@ -14,3 +14,10 @@ observaciones) para que Claude recuerde contexto entre sesiones.
   reciclar el contenedor.
 - Para replicar en otro repo: copiar el bloque `"memory": {...}` a su `.mcp.json` y crear
   un `.claude/memory/knowledge-graph.jsonl` vacio.
+
+**BUG CONFIRMADO (2026-07-21):** `${CLAUDE_PROJECT_DIR}` en `env.MEMORY_FILE_PATH`
+NO se expande en este harness para servidores MCP tipo `command`/stdio (ENOENT
+resolviendo contra la carpeta del paquete npm, no el repo). Se reemplazo por
+ruta absoluta hardcodeada (`/home/user/orogest-lex-backend/.claude/memory/knowledge-graph.jsonl`).
+Verificar que esa ruta coincide con el working directory real antes de confiar
+en la persistencia; ajustar si el entorno monta el repo en otro lugar.
