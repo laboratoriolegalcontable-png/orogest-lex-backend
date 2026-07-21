@@ -30,6 +30,14 @@ dev = [
     "ruff>=0.4.0",
 ]
 
+[tool.setuptools.packages.find]
+# Without this, setuptools' flat-layout auto-discovery sees both `app/` and
+# `alembic/` (migration scripts, not a package) as top-level packages and
+# refuses to build ("Multiple top-level packages discovered in a flat-layout").
+# Only `app` is the installable package; alembic/scripts/tests are run in
+# place via `python -m` / the `alembic` CLI, not imported as installed code.
+include = ["app*"]
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
