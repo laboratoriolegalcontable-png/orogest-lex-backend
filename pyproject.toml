@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "OroGest Lex — Backend API for Estudio Oro S.A.S."
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.115.0",
+    "fastapi>=0.115.0,<0.120.0",
     "uvicorn[standard]>=0.30.0",
     "sqlalchemy[asyncio]>=2.0.30",
     "asyncpg>=0.29.0",
