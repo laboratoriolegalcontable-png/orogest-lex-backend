@@ -1,0 +1,34 @@
+name: memory-mcp-validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate .mcp.json is valid JSON
+        run: python3 -c "import json; json.load(open('.mcp.json'))"
+      - name: Scan memory file for obvious secret patterns
+        run: |
+          python3 - <<'PYEOF'
+          import re, sys, pathlib
+
+          path = pathlib.Path(".claude/memory/knowledge-graph.jsonl")
+          if not path.exists():
+              sys.exit(0)
+
+          pattern = re.compile(
+              r"(api[_-]?key|secret|password|token|bearer)[\"': ]*[A-Za-z0-9_-]{16,}",
+              re.IGNORECASE,
+          )
+          text = path.read_text(errors="ignore")
+          hit = pattern.search(text)
+          if hit:
+              print(f"::warning::Posible secreto detectado en knowledge-graph.jsonl: {hit.group(0)[:40]}...")
+              sys.exit(1)
+          PYEOF
