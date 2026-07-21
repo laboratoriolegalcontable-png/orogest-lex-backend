@@ -43,7 +43,12 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(
-        SAEnum(Role, name="user_role", create_constraint=True),
+        SAEnum(
+            Role,
+            name="user_role",
+            create_constraint=True,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         default=Role.PASANTE,
         nullable=False,
     )
