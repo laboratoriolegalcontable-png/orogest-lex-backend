@@ -223,7 +223,7 @@ class TestRouteCompletenessV2:
     def test_all_new_routes_exist(self):
         from app.main import app
 
-        paths = [r.path for r in app.routes if hasattr(r, "path")]
+        paths = list(app.openapi()["paths"].keys())
 
         new_prefixes = [
             "/api/v1/clients",
@@ -238,13 +238,13 @@ class TestRouteCompletenessV2:
     def test_total_routes_over_60(self):
         from app.main import app
 
-        api_routes = [r for r in app.routes if hasattr(r, "path") and r.path.startswith("/api")]
+        api_routes = [p for p in app.openapi()["paths"] if p.startswith("/api")]
         assert len(api_routes) >= 60, f"Only {len(api_routes)} API routes"
 
     def test_client_crud_routes(self):
         from app.main import app
 
-        paths = [r.path for r in app.routes if hasattr(r, "path")]
+        paths = list(app.openapi()["paths"].keys())
         assert "/api/v1/clients/" in paths
         assert "/api/v1/clients/{client_id}" in paths
         assert "/api/v1/clients/link-case" in paths
@@ -253,7 +253,7 @@ class TestRouteCompletenessV2:
     def test_template_routes(self):
         from app.main import app
 
-        paths = [r.path for r in app.routes if hasattr(r, "path")]
+        paths = list(app.openapi()["paths"].keys())
         assert "/api/v1/templates/" in paths
         assert "/api/v1/templates/{template_id}" in paths
         assert "/api/v1/templates/{template_id}/render" in paths
@@ -262,7 +262,7 @@ class TestRouteCompletenessV2:
     def test_batch_routes(self):
         from app.main import app
 
-        paths = [r.path for r in app.routes if hasattr(r, "path")]
+        paths = list(app.openapi()["paths"].keys())
         assert "/api/v1/batch/cases/update-status" in paths
         assert "/api/v1/batch/cases/assign" in paths
         assert "/api/v1/batch/cases/tag" in paths

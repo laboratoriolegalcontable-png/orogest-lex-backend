@@ -281,7 +281,7 @@ class TestAppImport:
     def test_routes_registered(self):
         from app.main import app
 
-        paths = [route.path for route in app.routes]
+        paths = list(app.openapi()["paths"].keys())
         assert "/health" in paths
         assert "/" in paths
 

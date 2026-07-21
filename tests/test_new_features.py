@@ -289,7 +289,7 @@ class TestRouteCompleteness:
     def test_all_expected_routes_exist(self):
         from app.main import app
 
-        paths = [route.path for route in app.routes if hasattr(route, "path")]
+        paths = list(app.openapi()["paths"].keys())
 
         expected_prefixes = [
             "/api/v1/auth",
@@ -315,20 +315,20 @@ class TestRouteCompleteness:
     def test_health_endpoint(self):
         from app.main import app
 
-        paths = [route.path for route in app.routes if hasattr(route, "path")]
+        paths = list(app.openapi()["paths"].keys())
         assert "/health" in paths
 
     def test_root_endpoint(self):
         from app.main import app
 
-        paths = [route.path for route in app.routes if hasattr(route, "path")]
+        paths = list(app.openapi()["paths"].keys())
         assert "/" in paths
 
     def test_route_count_reasonable(self):
         """Verify we have a substantial number of routes."""
         from app.main import app
 
-        api_routes = [r for r in app.routes if hasattr(r, "path") and r.path.startswith("/api")]
+        api_routes = [p for p in app.openapi()["paths"] if p.startswith("/api")]
         assert len(api_routes) >= 30, f"Only {len(api_routes)} API routes found"
 
 
