@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import RequirePermission
@@ -217,7 +218,13 @@ async def link_client_to_case(
 
     try:
         await db.flush()
-    except Exception:
+    except IntegrityError:
+        # Unique (case_id, client_id, role) violation, or an FK pointing at a
+        # nonexistent case/client. Either way this is a 4xx client error, not
+        # a hidden server bug — but we no longer mask *other* exceptions
+        # (e.g. a genuine DB/connection failure) behind this message.
+        # get_db's session wrapper rolls back the transaction once this
+        # HTTPException propagates.
         raise HTTPException(
             status_code=409, detail="Este cliente ya está vinculado a la causa con ese rol"
         )

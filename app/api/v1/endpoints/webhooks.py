@@ -181,7 +181,7 @@ async def whatsapp_inbound(
     """
     # Simple secret validation (production: use proper HMAC)
     expected_secret = settings.SECRET_KEY[:16]
-    if x_webhook_secret != expected_secret:
+    if not x_webhook_secret or not hmac.compare_digest(x_webhook_secret, expected_secret):
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
     # Classify the incoming message
@@ -249,7 +249,7 @@ async def n8n_trigger(
     Allows N8n workflows to push events into OroGest.
     """
     expected_secret = settings.SECRET_KEY[:16]
-    if x_webhook_secret != expected_secret:
+    if not x_webhook_secret or not hmac.compare_digest(x_webhook_secret, expected_secret):
         raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
     await create_audit_entry(

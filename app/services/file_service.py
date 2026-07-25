@@ -7,6 +7,7 @@ Each file gets a SHA-256 hash for integrity verification.
 """
 
 import hashlib
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -60,6 +61,24 @@ def _compute_file_hash(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 
+def _sanitize_filename(filename: str) -> str:
+    """
+    Strip directory components and traversal/control characters from a
+    client-supplied filename before it is used to build a filesystem path.
+
+    UploadFile.filename comes straight from the multipart request and is
+    fully attacker-controlled (e.g. "../../../../etc/cron.d/evil" or
+    "..\\..\\evil.txt"). Without this, _build_storage_path would embed it
+    directly into a path joined onto UPLOAD_DIR, allowing writes (and later
+    reads via get_file_full_path) outside the upload directory.
+    """
+    name = Path(filename).name  # drop any POSIX directory components
+    name = name.replace("\x00", "")  # strip null bytes
+    name = re.sub(r"[/\\]", "_", name)  # neutralize any remaining separators
+    name = name.lstrip(".")  # avoid ".", ".." or hidden-dotfile reconstruction
+    return name or "file"
+
+
 def _build_storage_path(
     user_id: uuid.UUID,
     filename: str,
@@ -67,7 +86,8 @@ def _build_storage_path(
 ) -> Path:
     """Build organized storage path: user_id/year/month/uuid_filename."""
     now = datetime.now(timezone.utc)
-    unique_name = f"{uuid.uuid4().hex[:12]}_{filename}"
+    safe_filename = _sanitize_filename(filename)
+    unique_name = f"{uuid.uuid4().hex[:12]}_{safe_filename}"
     return UPLOAD_DIR / str(user_id) / str(now.year) / f"{now.month:02d}" / unique_name
 
 
@@ -120,7 +140,12 @@ async def save_uploaded_file(
 
 def get_file_full_path(relative_path: str) -> Path:
     """Get the full filesystem path from a relative DB path."""
-    full = UPLOAD_DIR / relative_path
+    upload_root = UPLOAD_DIR.resolve()
+    full = (UPLOAD_DIR / relative_path).resolve()
+    # Defense in depth: refuse to serve anything that resolves outside
+    # UPLOAD_DIR, even if a stored relative_path somehow contains "..".
+    if full != upload_root and upload_root not in full.parents:
+        raise FileNotFoundError(f"Archivo no encontrado: {relative_path}")
     if not full.exists():
         raise FileNotFoundError(f"Archivo no encontrado: {relative_path}")
     return full
