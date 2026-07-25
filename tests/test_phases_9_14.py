@@ -5,10 +5,10 @@ Memory chunking, encryption, due diligence, rate limiting.
 
 import pytest
 
-from app.memory.memory_service import chunk_text
-from app.services.encryption_service import decrypt_field, encrypt_field, is_encrypted
 from app.api.v1.endpoints.properties import compute_risk_level, get_dd_template
+from app.memory.memory_service import chunk_text
 from app.middleware.rate_limit import InMemoryRateLimiter, get_rate_limit_config
+from app.services.encryption_service import decrypt_field, encrypt_field, is_encrypted
 
 
 # ═══════════════════════════════════════════
@@ -158,7 +158,7 @@ class TestRateLimiter:
     def test_allows_within_limit(self):
         limiter = InMemoryRateLimiter()
         for i in range(5):
-            allowed, remaining = limiter.check("test_key", max_requests=5, window_seconds=60)
+            allowed, _ = limiter.check("test_key", max_requests=5, window_seconds=60)
             if i < 5:
                 assert allowed
 
@@ -178,7 +178,7 @@ class TestRateLimiter:
         allowed_a, _ = limiter.check("key_a", max_requests=5, window_seconds=60)
         assert not allowed_a
         # key_b is fresh
-        allowed_b, remaining_b = limiter.check("key_b", max_requests=5, window_seconds=60)
+        allowed_b, _ = limiter.check("key_b", max_requests=5, window_seconds=60)
         assert allowed_b
 
     def test_rate_limit_config_ai(self):

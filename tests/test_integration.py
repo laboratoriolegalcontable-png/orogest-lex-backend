@@ -6,8 +6,8 @@ These run without a real DB or Redis — they test the logic layers.
 
 import pytest
 
+from app.agents.orchestrator import Domain, Urgency, Workflow, classify_request
 from app.services.ai_service import _build_system_prompt, _extract_verification_flags
-from app.agents.orchestrator import classify_request, Domain, Urgency, Workflow
 
 
 # We can't import InMemoryRateLimiter from redis_service since it doesn't exist there,
@@ -15,10 +15,10 @@ from app.agents.orchestrator import classify_request, Domain, Urgency, Workflow
 class TestRedisServiceStructure:
     def test_imports(self):
         from app.services.redis_service import (
+            RealtimeCounters,
             RedisCache,
             RedisRateLimiter,
             TokenBlacklist,
-            RealtimeCounters,
         )
 
         assert RedisCache.PREFIX == "orogest:cache:"
@@ -194,6 +194,7 @@ class TestLoggingMiddleware:
 
     def test_structured_formatter(self):
         import logging
+
         from app.middleware.logging_middleware import StructuredFormatter
 
         formatter = StructuredFormatter()
@@ -215,20 +216,21 @@ class TestLoggingMiddleware:
 # ═══════════════════════════════════════════
 class TestEncryptionEdgeCases:
     def test_special_characters(self):
-        from app.services.encryption_service import encrypt_field, decrypt_field
+        from app.services.encryption_service import decrypt_field, encrypt_field
 
         text = "§123 — «artículo» del CCyCN ® ™ ¡¿? €£¥"
         assert decrypt_field(encrypt_field(text)) == text
 
     def test_newlines_and_tabs(self):
-        from app.services.encryption_service import encrypt_field, decrypt_field
+        from app.services.encryption_service import decrypt_field, encrypt_field
 
         text = "Línea 1\nLínea 2\n\tIndentada\r\nWindows line"
         assert decrypt_field(encrypt_field(text)) == text
 
     def test_json_string(self):
         import json
-        from app.services.encryption_service import encrypt_field, decrypt_field
+
+        from app.services.encryption_service import decrypt_field, encrypt_field
 
         data = json.dumps({"nombre": "Juan Pérez", "cuit": "20-12345678-9"})
         decrypted = decrypt_field(encrypt_field(data))

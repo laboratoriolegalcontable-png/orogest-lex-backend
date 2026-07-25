@@ -6,21 +6,21 @@ from datetime import date
 
 import pytest
 
-from app.services.export_service import (
-    ESTUDIO_HEADER,
-    FIRMA_LINES,
-    _fallback_markdown,
-    HAS_DOCX,
-)
-from app.services.file_service import (
-    ALLOWED_EXTENSIONS,
-    _compute_file_hash,
-    _validate_file,
-    FileUploadError,
-)
 from app.api.v1.endpoints.calculadora import (
     _calcular_antiguedad,
     _dias_vacaciones_por_antiguedad,
+)
+from app.services.export_service import (
+    ESTUDIO_HEADER,
+    FIRMA_LINES,
+    HAS_DOCX,
+    _fallback_markdown,
+)
+from app.services.file_service import (
+    ALLOWED_EXTENSIONS,
+    FileUploadError,
+    _compute_file_hash,
+    _validate_file,
 )
 
 
@@ -99,7 +99,7 @@ class TestCalculadoraEndpoint:
 
     def test_antiguedad_minimum_one_period(self):
         """Art. 245: minimum 1 salary even for less than 1 year."""
-        anos, meses = _calcular_antiguedad(date(2024, 6, 1), date(2024, 11, 1))
+        anos, _ = _calcular_antiguedad(date(2024, 6, 1), date(2024, 11, 1))
         periodos = max(1, anos)  # min 1
         assert periodos == 1
 
@@ -109,8 +109,7 @@ class TestCalculadoraEndpoint:
         tope = 400000  # artificially low tope
         piso_vizzoti = mejor * 0.67
         base = tope
-        if base < piso_vizzoti:
-            base = piso_vizzoti
+        base = max(base, piso_vizzoti)
         assert base == 670000.0
 
     def test_preaviso_menos_5_anos(self):

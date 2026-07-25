@@ -13,7 +13,7 @@ import pytest
 # ═══════════════════════════════════════════
 class TestClientModel:
     def test_client_importable(self):
-        from app.models.models import Client, CaseClient
+        from app.models.models import CaseClient, Client
 
         assert Client.__tablename__ == "clients"
         assert CaseClient.__tablename__ == "case_clients"
@@ -187,8 +187,9 @@ class TestBatchOperations:
 
     def test_batch_max_50(self):
         """Batch operations should limit to 50 items."""
-        from app.api.v1.endpoints.batch import BatchStatusUpdate
         from pydantic import ValidationError
+
+        from app.api.v1.endpoints.batch import BatchStatusUpdate
 
         with pytest.raises(ValidationError):
             BatchStatusUpdate(
@@ -197,8 +198,9 @@ class TestBatchOperations:
             )
 
     def test_batch_min_1(self):
-        from app.api.v1.endpoints.batch import BatchStatusUpdate
         from pydantic import ValidationError
+
+        from app.api.v1.endpoints.batch import BatchStatusUpdate
 
         with pytest.raises(ValidationError):
             BatchStatusUpdate(case_ids=[], new_status="archivada")
@@ -209,7 +211,7 @@ class TestBatchOperations:
 # ═══════════════════════════════════════════
 class TestCLI:
     def test_cli_importable(self):
-        from scripts.cli import main, cmd_stats, cmd_verify_audit
+        from scripts.cli import cmd_stats, cmd_verify_audit, main
 
         assert callable(main)
         assert callable(cmd_stats)
@@ -274,14 +276,14 @@ class TestRouteCompletenessV2:
 class TestModelCompleteness:
     def test_all_models_importable(self):
         from app.models.models import (
-            User,
-            Case,
-            Document,
-            Property,
             AIConversation,
             AuditLog,
-            Client,
+            Case,
             CaseClient,
+            Client,
+            Document,
+            Property,
+            User,
             WritingTemplate,
         )
 
