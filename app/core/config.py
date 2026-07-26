@@ -4,7 +4,11 @@ Estudio Oro S.A.S. | CUIT 30-71933033-5
 """
 
 from functools import lru_cache
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_PLACEHOLDER_SECRET_KEY = "CAMBIAR-EN-PRODUCCION-generar-con-openssl-rand-hex-64"
+_PLACEHOLDER_ENCRYPTION_KEY = "CAMBIAR-EN-PRODUCCION-32-bytes-base64"
 
 
 class Settings(BaseSettings):
@@ -59,6 +63,22 @@ class Settings(BaseSettings):
 
     # ── Data Residency ──
     AWS_REGION: str = "sa-east-1"  # São Paulo
+
+    @model_validator(mode="after")
+    def _reject_placeholder_secrets_in_production(self) -> "Settings":
+        if self.ENVIRONMENT != "production":
+            return self
+        if self.SECRET_KEY == _PLACEHOLDER_SECRET_KEY:
+            raise ValueError(
+                "SECRET_KEY sigue en su valor placeholder por defecto. "
+                "Generar uno real con `openssl rand -hex 64` y setearlo antes de arrancar en produccion."
+            )
+        if self.ENCRYPTION_KEY == _PLACEHOLDER_ENCRYPTION_KEY:
+            raise ValueError(
+                "ENCRYPTION_KEY sigue en su valor placeholder por defecto. "
+                "Generar una clave real de 32 bytes en base64 antes de arrancar en produccion."
+            )
+        return self
 
 
 @lru_cache
