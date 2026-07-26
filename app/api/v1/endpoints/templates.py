@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import RequirePermission, RequireRole
 from app.core.security import Permission, Role
 from app.db.session import get_db
-from app.models.models import WritingTemplate, User
+from app.models.models import User, WritingTemplate
 from app.services.audit_service import create_audit_entry
 
 router = APIRouter(prefix="/templates", tags=["templates"])

@@ -4,7 +4,7 @@ Complete activity feed for a case, aggregated from audit log.
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, select
@@ -135,9 +135,9 @@ async def user_activity(
     user: User = Depends(RequirePermission(Permission.AUDIT_READ)),
 ):
     """Get activity timeline for a specific user."""
-    from datetime import timedelta, timezone
+    from datetime import timedelta
 
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
 
     stmt = (
         select(AuditLog)

@@ -14,7 +14,7 @@ this module handles the coordination and state.
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 
@@ -206,7 +206,7 @@ class ClassificationResult:
     workflow: Workflow
     confidence: float  # 0.0 to 1.0
     matched_keywords: list[str] = field(default_factory=list)
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 def classify_request(text: str) -> ClassificationResult:
@@ -290,7 +290,7 @@ class OrchestratorTask:
     state: TaskState = TaskState.PENDING
     result: str | None = None
     error: str | None = None
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     completed_at: str | None = None
 
     def classify(self):
@@ -303,12 +303,12 @@ class OrchestratorTask:
     def complete(self, result: str):
         self.result = result
         self.state = TaskState.COMPLETED
-        self.completed_at = datetime.now(timezone.utc).isoformat()
+        self.completed_at = datetime.now(UTC).isoformat()
 
     def fail(self, error: str):
         self.error = error
         self.state = TaskState.FAILED
-        self.completed_at = datetime.now(timezone.utc).isoformat()
+        self.completed_at = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict:
         return {

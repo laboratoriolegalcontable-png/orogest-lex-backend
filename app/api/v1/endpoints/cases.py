@@ -3,6 +3,7 @@ OroGest Lex — Cases Endpoints (Causas judiciales)
 """
 
 import uuid
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
@@ -146,10 +147,10 @@ async def delete_case(
         raise HTTPException(status_code=404, detail="Causa no encontrada")
 
     # Soft delete
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     case.is_deleted = True
-    case.deleted_at = datetime.now(timezone.utc)
+    case.deleted_at = datetime.now(UTC)
 
     await create_audit_entry(
         db,

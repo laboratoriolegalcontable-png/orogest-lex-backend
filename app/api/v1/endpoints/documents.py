@@ -4,7 +4,9 @@ CRUD for legal documents with versioning and memory integration.
 """
 
 import hashlib
+import logging
 import uuid
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
@@ -16,6 +18,8 @@ from app.db.session import get_db
 from app.models.models import Document, User
 from app.schemas.schemas import DocumentCreate, DocumentResponse
 from app.services.audit_service import create_audit_entry
+
+logger = logging.getLogger("orogest.documents")
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -91,8 +95,8 @@ async def create_document(
                 user_id=user.id,
                 tags=body.doc_type,
             )
-        except Exception:
-            pass  # Memory storage is non-critical
+        except Exception as e:  # noqa: BLE001 — memory storage is non-critical, must not fail the document write
+            logger.warning(f"store_memory failed for document {doc.id}: {e}")
 
     await create_audit_entry(
         db,
@@ -141,10 +145,10 @@ async def update_document(
     db.add(new_doc)
 
     # Soft-delete old version
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     old_doc.is_deleted = True
-    old_doc.deleted_at = datetime.now(timezone.utc)
+    old_doc.deleted_at = datetime.now(UTC)
 
     await db.flush()
 
@@ -162,8 +166,8 @@ async def update_document(
                 user_id=user.id,
                 tags=body.doc_type,
             )
-        except Exception:
-            pass
+        except Exception as e:  # noqa: BLE001 — memory storage is non-critical, must not fail the document write
+            logger.warning(f"memory sync failed for document {new_doc.id}: {e}")
 
     await create_audit_entry(
         db,
@@ -215,18 +219,18 @@ async def delete_document(
     if not doc or doc.is_deleted:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
 
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     doc.is_deleted = True
-    doc.deleted_at = datetime.now(timezone.utc)
+    doc.deleted_at = datetime.now(UTC)
 
     # Clean memory
     try:
         from app.memory.memory_service import delete_memory_by_source
 
         await delete_memory_by_source(db, "document", str(doc.id))
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001 — memory cleanup is non-critical, must not block the delete
+        logger.warning(f"delete_memory_by_source failed for document {doc.id}: {e}")
 
     await create_audit_entry(
         db,

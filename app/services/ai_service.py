@@ -10,14 +10,17 @@ Flow:
 5. Store conversation + new memory chunks
 """
 
+import logging
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+
+logger = logging.getLogger("orogest.ai_service")
 from app.models.models import AIConversation
 
 settings = get_settings()
@@ -177,8 +180,8 @@ async def create_or_continue_conversation(
         rag_context = await get_context_for_query(
             db, message, case_id=str(case_id) if case_id else None, branch=branch
         )
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001 — RAG context is an enrichment, must not block the query
+        logger.warning(f"RAG context lookup failed for case {case_id}: {e}")
 
     result = await query_claude(
         message=message,
@@ -189,14 +192,12 @@ async def create_or_continue_conversation(
         case_info=case_info,
     )
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     new_messages = history + [
         {"role": "user", "content": message, "timestamp": now},
         {"role": "assistant", "content": result["response"], "timestamp": now},
     ]
-    flags_count = (
-        len(sum(result["verification_flags"].values(), [])) if result["verification_flags"] else 0
-    )
+    flags_count = sum(len(v) for v in result["verification_flags"].values())
 
     if conversation:
         conversation.messages = new_messages
@@ -230,7 +231,7 @@ async def create_or_continue_conversation(
                 user_id=user_id,
                 tags=workflow,
             )
-        except Exception:
-            pass
+        except Exception as e:  # noqa: BLE001 — memory storage is non-critical, must not fail the response
+            logger.warning(f"store_memory failed for conversation {conversation.id}: {e}")
 
     return result, conversation

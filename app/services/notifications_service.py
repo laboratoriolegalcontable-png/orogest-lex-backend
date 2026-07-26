@@ -7,15 +7,15 @@ For push notifications (WhatsApp, email), integrate with N8n workflows.
 """
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Text, Boolean, select, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, func, select
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, UUIDPrimaryKeyMixin, TimestampMixin
+from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 
 class NotificationPriority(str, Enum):
@@ -90,7 +90,7 @@ async def scan_upcoming_deadlines(db: AsyncSession) -> list[dict]:
     """
     from app.models.models import Case
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     in_14_days = now + timedelta(days=14)
 
     result = await db.execute(
@@ -189,7 +189,7 @@ async def mark_as_read(
     if not notif or notif.user_id != user_id:
         return False
     notif.is_read = True
-    notif.read_at = datetime.now(timezone.utc)
+    notif.read_at = datetime.now(UTC)
     return True
 
 
@@ -201,7 +201,7 @@ async def mark_all_read(db: AsyncSession, user_id: uuid.UUID) -> int:
         )
     )
     notifs = result.scalars().all()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for n in notifs:
         n.is_read = True
         n.read_at = now

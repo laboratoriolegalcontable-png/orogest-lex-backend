@@ -6,7 +6,7 @@ Generate downloadable DOCX, CSV, and Markdown files from system data.
 import csv
 import io
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -65,7 +65,7 @@ async def export_escrito(
         petitorio=body.petitorio,
     )
 
-    filename = f"escrito_{body.causa.replace('/', '-')}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.docx"
+    filename = f"escrito_{body.causa.replace('/', '-')}_{datetime.now(UTC).strftime('%Y%m%d')}.docx"
 
     await create_audit_entry(
         db,
@@ -98,7 +98,7 @@ async def export_carta_documento(
         cuerpo=body.cuerpo,
     )
 
-    filename = f"carta_documento_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.docx"
+    filename = f"carta_documento_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.docx"
 
     await create_audit_entry(
         db,
@@ -146,7 +146,7 @@ async def export_due_diligence_report(
     )
 
     safe_title = prop.title.replace(" ", "_")[:30]
-    filename = f"DD_{safe_title}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.docx"
+    filename = f"DD_{safe_title}_{datetime.now(UTC).strftime('%Y%m%d')}.docx"
 
     await create_audit_entry(
         db,
@@ -232,7 +232,7 @@ async def export_cases_csv(
         )
 
     output.seek(0)
-    filename = f"causas_estudio_oro_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
+    filename = f"causas_estudio_oro_{datetime.now(UTC).strftime('%Y%m%d')}.csv"
 
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode("utf-8-sig")),  # BOM for Excel compatibility
@@ -304,7 +304,7 @@ async def export_properties_csv(
     )
 
     output.seek(0)
-    filename = f"propiedades_estudio_oro_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
+    filename = f"propiedades_estudio_oro_{datetime.now(UTC).strftime('%Y%m%d')}.csv"
 
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode("utf-8-sig")),

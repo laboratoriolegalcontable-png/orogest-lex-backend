@@ -4,6 +4,7 @@ Estudio Oro S.A.S. | CUIT 30-71933033-5
 """
 
 from functools import lru_cache
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

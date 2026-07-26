@@ -6,16 +6,19 @@ Files stored at: UPLOAD_DIR/{user_id}/{year}/{month}/{filename}
 Each file gets a SHA-256 hash for integrity verification.
 """
 
+import asyncio
 import hashlib
+import logging
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import UploadFile
 
 from app.core.config import get_settings
 
+logger = logging.getLogger("orogest.file_service")
 settings = get_settings()
 
 UPLOAD_DIR = Path("/data/orogest/uploads")  # Override via env in production
@@ -85,7 +88,7 @@ def _build_storage_path(
     ext: str,
 ) -> Path:
     """Build organized storage path: user_id/year/month/uuid_filename."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     safe_filename = _sanitize_filename(filename)
     unique_name = f"{uuid.uuid4().hex[:12]}_{safe_filename}"
     return UPLOAD_DIR / str(user_id) / str(now.year) / f"{now.month:02d}" / unique_name
@@ -122,9 +125,8 @@ async def save_uploaded_file(
     # Create directories
     storage_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Write file
-    with open(storage_path, "wb") as f:
-        f.write(content)
+    # Write file (off the event loop — this is a sync/blocking disk write)
+    await asyncio.to_thread(storage_path.write_bytes, content)
 
     # Return relative path (strip UPLOAD_DIR prefix for portability)
     relative_path = str(storage_path.relative_to(UPLOAD_DIR))
@@ -158,6 +160,6 @@ def delete_file(relative_path: str) -> bool:
         if full.exists():
             full.unlink()
             return True
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001 — best-effort disk cleanup, must not raise into the caller
+        logger.warning(f"delete_file failed for {relative_path}: {e}")
     return False

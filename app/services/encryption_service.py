@@ -69,5 +69,5 @@ def is_encrypted(value: str) -> bool:
     try:
         decoded = base64.b64decode(value)
         return len(decoded) > 12  # At least nonce + some ciphertext
-    except Exception:
+    except Exception:  # noqa: BLE001 — best-effort format sniff, not a security decision: any decode failure means "not encrypted"
         return False

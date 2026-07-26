@@ -5,7 +5,7 @@ SHA-256 chained log for tamper-evident audit trail.
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,7 +38,7 @@ async def create_audit_entry(
             "user_id": str(user_id) if user_id else None,
             "resource_type": resource_type,
             "resource_id": resource_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         },
         sort_keys=True,
     )

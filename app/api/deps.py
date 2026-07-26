@@ -2,6 +2,8 @@
 OroGest Lex — API Dependencies
 """
 
+from typing import ClassVar
+
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
@@ -67,7 +69,12 @@ class RequireRole:
     Usage: Depends(RequireRole(Role.ABOGADO))
     """
 
-    _hierarchy = {Role.DIRECTOR: 4, Role.ABOGADO: 3, Role.ASISTENTE: 2, Role.PASANTE: 1}
+    _hierarchy: ClassVar[dict[Role, int]] = {
+        Role.DIRECTOR: 4,
+        Role.ABOGADO: 3,
+        Role.ASISTENTE: 2,
+        Role.PASANTE: 1,
+    }
 
     def __init__(self, min_role: Role):
         self.min_role = min_role

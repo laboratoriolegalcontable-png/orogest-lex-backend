@@ -4,7 +4,7 @@ CRUD for real estate properties with due diligence workflow integration.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
@@ -208,7 +208,7 @@ async def update_due_diligence(
     # Check if DD is complete
     all_resolved = all(item.get("status") in ("ok", "no_aplica") for item in checklist.values())
     if all_resolved:
-        prop.dd_completed_at = datetime.now(timezone.utc)
+        prop.dd_completed_at = datetime.now(UTC)
         prop.status = "en_due_diligence"  # could transition to "publicado"
 
     await create_audit_entry(
@@ -262,7 +262,7 @@ async def delete_property(
         raise HTTPException(status_code=404, detail="Propiedad no encontrada")
 
     prop.is_deleted = True
-    prop.deleted_at = datetime.now(timezone.utc)
+    prop.deleted_at = datetime.now(UTC)
 
     await create_audit_entry(
         db,

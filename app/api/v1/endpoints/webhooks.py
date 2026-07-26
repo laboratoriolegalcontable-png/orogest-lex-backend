@@ -9,13 +9,12 @@ Outbound: register webhook URLs to receive OroGest events
 import hashlib
 import hmac
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import httpx
 
 from app.api.deps import RequireRole
 from app.core.config import get_settings
@@ -75,7 +74,7 @@ async def register_webhook(
         "secret": body.secret,
         "name": body.name,
         "created_by": str(user.id),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "active": True,
         "delivery_count": 0,
         "error_count": 0,
@@ -132,13 +131,13 @@ async def dispatch_webhook_event(event: str, payload: dict):
     Called internally by other services when events occur.
     Non-blocking: fires and forgets (logs errors).
     """
-    for wh_id, wh in _webhook_registry.items():
+    for wh in _webhook_registry.values():
         if not wh["active"] or event not in wh["events"]:
             continue
 
         body = {
             "event": event,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "payload": payload,
             "source": "orogest-lex",
         }
@@ -160,7 +159,7 @@ async def dispatch_webhook_event(event: str, payload: dict):
                 wh["delivery_count"] += 1
                 if resp.status_code >= 400:
                     wh["error_count"] += 1
-        except Exception:
+        except Exception:  # noqa: BLE001 — fire-and-forget delivery to a third-party URL; one bad target must not stop the others
             wh["error_count"] += 1
 
 
@@ -266,5 +265,5 @@ async def n8n_trigger(
     return {
         "status": "processed",
         "event": body.event,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }

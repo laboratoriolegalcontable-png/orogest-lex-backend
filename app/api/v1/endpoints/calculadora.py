@@ -326,10 +326,14 @@ async def calcular_indemnizacion(
     # ── Advertencias generales ──
     advertencias.extend(
         [
-            "[VERIFICAR] Los montos de SMVM, RIPTE y topes convencionales cambian periódicamente. "
-            "Consultar fuentes oficiales del Ministerio de Trabajo.",
-            "[VERIFICAR] Este cálculo es orientativo. La liquidación definitiva debe contemplar "
-            "el convenio colectivo aplicable y la jurisprudencia del fuero.",
+            (
+                "[VERIFICAR] Los montos de SMVM, RIPTE y topes convencionales cambian periódicamente. "
+                "Consultar fuentes oficiales del Ministerio de Trabajo."
+            ),
+            (
+                "[VERIFICAR] Este cálculo es orientativo. La liquidación definitiva debe contemplar "
+                "el convenio colectivo aplicable y la jurisprudencia del fuero."
+            ),
         ]
     )
 

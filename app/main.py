@@ -40,7 +40,7 @@ async def lifespan(app: FastAPI):
         redis = await get_redis()
         await redis.ping()
         logger.info("Redis connected ✅")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — startup probe: Redis is a soft dependency, must not block boot
         logger.warning(f"Redis not available (non-critical): {e}")
 
     # Log DB config (masked)
@@ -57,8 +57,8 @@ async def lifespan(app: FastAPI):
 
         await close_redis()
         logger.info("Redis disconnected")
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001 — shutdown: never block process exit on a soft dependency
+        logger.warning(f"Redis disconnect failed (non-critical): {e}")
     logger.info("OroGest Lex API shut down 🔴")
 
 
@@ -134,7 +134,7 @@ async def health_check():
         redis = await get_redis()
         await redis.ping()
         health["redis"] = "connected"
-    except Exception:
+    except Exception:  # noqa: BLE001 — health check: Redis being down must not fail the whole probe
         health["redis"] = "unavailable"
 
     return health

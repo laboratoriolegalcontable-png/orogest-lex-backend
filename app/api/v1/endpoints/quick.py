@@ -4,7 +4,7 @@ Mobile-optimized endpoints for fast consultation on the go.
 Returns minimal payloads, cached where possible.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.models.models import Case, AIConversation, User
+from app.models.models import AIConversation, Case, User
 
 router = APIRouter(prefix="/quick", tags=["quick"])
 
@@ -26,7 +26,7 @@ async def quick_status(
     One-call status for mobile dashboard.
     Returns everything needed in a single request.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Active cases count
     active = (
@@ -147,7 +147,7 @@ async def my_active_cases(
 
 
 def _greeting(name: str) -> str:
-    hour = datetime.now(timezone.utc).hour - 3  # Argentina UTC-3
+    hour = datetime.now(UTC).hour - 3  # Argentina UTC-3
     if hour < 0:
         hour += 24
     first = name.split()[0] if name else "Dr."

@@ -3,7 +3,7 @@ OroGest Lex — Dashboard Endpoints (Fase 14)
 Operational metrics, system health, and activity summary.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -33,7 +33,7 @@ async def dashboard_summary(
     Executive summary dashboard.
     Accessible to ABOGADO+ roles.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     last_7_days = now - timedelta(days=7)
 
     # ── Cases ──
@@ -260,7 +260,7 @@ async def system_health(
     try:
         await db.execute(select(func.now()))
         health["checks"]["database"] = {"status": "ok"}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — health check: one failing probe must not crash the others
         health["checks"]["database"] = {"status": "error", "detail": str(e)[:100]}
         health["status"] = "degraded"
 
@@ -282,7 +282,7 @@ async def system_health(
             "entries_checked": len(entries),
             "chain_intact": chain_valid,
         }
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — health check: one failing probe must not crash the others
         health["checks"]["audit_chain"] = {"status": "error", "detail": str(e)[:100]}
 
     # Claude API check (just verify key is configured)

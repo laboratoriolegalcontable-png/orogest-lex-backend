@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.config import get_settings
-from app.db.base import Base, UUIDPrimaryKeyMixin, TimestampMixin
+from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
 
 settings = get_settings()
 

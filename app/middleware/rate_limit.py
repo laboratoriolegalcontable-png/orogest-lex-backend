@@ -9,7 +9,7 @@ Limits:
 """
 
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import HTTPException, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -133,7 +133,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 user_id = decoded.get("sub", "")
                 if user_id:
                     return f"user:{user_id}:{request.url.path}"
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 — best-effort rate-limit key: malformed token just falls back to IP
                 pass
 
         # Fallback to IP

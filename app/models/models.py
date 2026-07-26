@@ -12,12 +12,11 @@ Models:
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,
     DateTime,
-    Enum as SAEnum,
     Float,
     ForeignKey,
     Index,
@@ -25,6 +24,9 @@ from sqlalchemy import (
     String,
     Text,
     func,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -74,8 +76,6 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
 class CaseBranch(str, SAEnum):
     """Ramas del derecho que maneja Estudio Oro."""
 
-    pass
-
 
 CASE_BRANCHES = [
     "penal",
@@ -112,7 +112,7 @@ class Case(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
         unique=True,
         nullable=False,
         index=True,
-        default=lambda: f"EO-{datetime.now(timezone.utc).year}-{uuid.uuid4().hex[:6].upper()}",
+        default=lambda: f"EO-{datetime.now(UTC).year}-{uuid.uuid4().hex[:6].upper()}",
     )
     caption: Mapped[str] = mapped_column(String(500), nullable=False)  # Carátula
 
@@ -307,7 +307,7 @@ class AuditLog(Base, UUIDPrimaryKeyMixin):
 
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         index=True,
     )

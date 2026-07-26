@@ -42,8 +42,7 @@ async def ai_query(
         )
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
-    except Exception as e:
-        # Log the error but don't expose internals
+    except Exception as e:  # noqa: BLE001 — API error boundary: log to audit, respond 502, never leak internals
         await create_audit_entry(
             db,
             action="ai.query.error",
@@ -66,9 +65,7 @@ async def ai_query(
         details={
             "workflow": body.workflow,
             "tokens": result["tokens_used"],
-            "flags_count": len(sum(result["verification_flags"].values(), []))
-            if result["verification_flags"]
-            else 0,
+            "flags_count": sum(len(v) for v in result["verification_flags"].values()),
         },
         ip_address=request.client.host if request.client else None,
     )
@@ -110,7 +107,7 @@ async def ai_draft(
             workflow="escrito_blindado",
             system_prompt_override=body_with_workflow.system_prompt_override,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — API error boundary: log to audit, respond 502, never leak internals
         await create_audit_entry(
             db,
             action="ai.draft.error",

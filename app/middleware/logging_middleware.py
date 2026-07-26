@@ -6,7 +6,8 @@ Structured logging for all API requests with timing, error capture, and request 
 import logging
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
+from typing import ClassVar
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -24,7 +25,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     - Error details on 4xx/5xx
     """
 
-    SKIP_PATHS = {"/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico"}
+    SKIP_PATHS: ClassVar[set[str]] = {"/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico"}
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         if request.url.path in self.SKIP_PATHS:
@@ -90,8 +91,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 payload += "=" * (4 - len(payload) % 4)
                 decoded = json.loads(base64.urlsafe_b64decode(payload))
                 return decoded.get("email") or decoded.get("sub")
-            except Exception:
-                pass
+            except Exception:  # noqa: BLE001 — best-effort log enrichment: malformed/foreign token just means no hint
+                return None
         return None
 
 

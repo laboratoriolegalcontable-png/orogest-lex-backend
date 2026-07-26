@@ -4,7 +4,7 @@ CRUD for client management with UIF/KYC compliance tracking.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
@@ -178,7 +178,7 @@ async def update_client(
 
     # Track KYC completion timestamp
     if "kyc_completed" in update_data and update_data["kyc_completed"] and not client.kyc_completed:
-        client.kyc_date = datetime.now(timezone.utc)
+        client.kyc_date = datetime.now(UTC)
 
     for field, value in update_data.items():
         old = getattr(client, field)

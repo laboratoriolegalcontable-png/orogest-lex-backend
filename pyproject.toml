@@ -49,7 +49,12 @@ line-length = 100
 # suggested rewrite (`not Case.is_deleted`) evaluates Python truthiness of the
 # Column object instead and silently breaks the query, so the rule is disabled
 # rather than "fixed".
-ignore = ["E712"]
+# B008: FastAPI's dependency-injection idiom is `param: T = Depends(...)` (and
+# `= Query(...)`, `= Body(...)`, etc.) — the call in the default *is* the API,
+# evaluated once per request by FastAPI's own DI system, not a mutable-default
+# bug. Every occurrence in this codebase is this pattern; rewriting ~200 route
+# signatures to dodge the rule would fight the framework for no safety gain.
+ignore = ["E712", "B008"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
