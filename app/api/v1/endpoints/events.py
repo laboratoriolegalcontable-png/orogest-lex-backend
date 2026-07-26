@@ -10,8 +10,8 @@ Usage from frontend:
 import asyncio
 import json
 import uuid
-from datetime import datetime, timezone
 from collections import defaultdict
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
@@ -34,7 +34,7 @@ async def publish_event(event_type: str, data: dict, user_id: str | None = None)
     event = {
         "type": event_type,
         "data": data,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "id": uuid.uuid4().hex[:8],
     }
 
@@ -60,24 +60,25 @@ async def _event_generator(user_id: str):
     queue = _event_queues[queue_key]
 
     # Send initial connection event
-    yield _format_sse({
-        "type": "connected",
-        "data": {"message": "OroGest Lex real-time stream connected"},
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
+    yield _format_sse(
+        {
+            "type": "connected",
+            "data": {"message": "OroGest Lex real-time stream connected"},
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+    )
 
     try:
         while True:
             try:
                 event = await asyncio.wait_for(queue.get(), timeout=30.0)
                 yield _format_sse(event)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Send keepalive ping every 30s
                 yield ": keepalive\n\n"
     finally:
         # Cleanup on disconnect
-        if queue_key in _event_queues:
-            del _event_queues[queue_key]
+        _event_queues.pop(queue_key, None)
 
 
 def _format_sse(event: dict) -> str:

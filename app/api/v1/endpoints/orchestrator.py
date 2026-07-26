@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, RequirePermission
+from app.agents.orchestrator import OrchestratorTask
+from app.api.deps import RequirePermission, get_current_user
 from app.core.security import Permission
 from app.db.session import get_db
 from app.models.models import User
-from app.agents.orchestrator import OrchestratorTask, classify_request
 from app.services.ai_service import create_or_continue_conversation
 from app.services.audit_service import create_audit_entry
 
@@ -81,10 +81,11 @@ async def classify_and_execute(
 
     # Step 2: Execute via Claude with the appropriate workflow
     import uuid as uuid_mod
+
     case_uuid = uuid_mod.UUID(body.case_id) if body.case_id else None
 
     try:
-        result, conversation = await create_or_continue_conversation(
+        result, _conversation = await create_or_continue_conversation(
             db=db,
             user_id=user.id,
             message=body.message,
@@ -92,7 +93,7 @@ async def classify_and_execute(
             workflow=task.classification.workflow.value,
         )
         task.complete(result["response"])
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — API error boundary: mark task failed, respond 502
         task.fail(str(e))
         raise HTTPException(status_code=502, detail="Error en la ejecución del orquestador.")
 

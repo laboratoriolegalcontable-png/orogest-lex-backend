@@ -5,11 +5,9 @@ These run without a real DB or Redis — they test the logic layers.
 """
 
 import pytest
-import time
 
+from app.agents.orchestrator import Domain, Urgency, Workflow, classify_request
 from app.services.ai_service import _build_system_prompt, _extract_verification_flags
-from app.middleware.rate_limit import InMemoryRateLimiter, get_rate_limit_config
-from app.agents.orchestrator import classify_request, Domain, Urgency, Workflow
 
 
 # We can't import InMemoryRateLimiter from redis_service since it doesn't exist there,
@@ -17,11 +15,12 @@ from app.agents.orchestrator import classify_request, Domain, Urgency, Workflow
 class TestRedisServiceStructure:
     def test_imports(self):
         from app.services.redis_service import (
+            RealtimeCounters,
             RedisCache,
             RedisRateLimiter,
             TokenBlacklist,
-            RealtimeCounters,
         )
+
         assert RedisCache.PREFIX == "orogest:cache:"
         assert RedisRateLimiter.PREFIX == "orogest:ratelimit:"
         assert TokenBlacklist.PREFIX == "orogest:blacklist:"
@@ -169,13 +168,14 @@ class TestOrchestratorAdvanced:
 class TestNotificationsStructure:
     def test_notification_model_importable(self):
         from app.services.notifications_service import (
-            Notification,
             NotificationPriority,
         )
+
         assert NotificationPriority.CRITICAL == "critical"
 
     def test_priority_enum(self):
         from app.services.notifications_service import NotificationPriority
+
         assert NotificationPriority.CRITICAL.value == "critical"
         assert NotificationPriority.HIGH.value == "high"
         assert NotificationPriority.NORMAL.value == "normal"
@@ -187,17 +187,25 @@ class TestNotificationsStructure:
 # ═══════════════════════════════════════════
 class TestLoggingMiddleware:
     def test_setup_logging_importable(self):
-        from app.middleware.logging_middleware import setup_logging, StructuredFormatter
+        from app.middleware.logging_middleware import setup_logging
+
         # Just verify it doesn't crash
         setup_logging(debug=True)
 
     def test_structured_formatter(self):
         import logging
+
         from app.middleware.logging_middleware import StructuredFormatter
+
         formatter = StructuredFormatter()
         record = logging.LogRecord(
-            name="test", level=logging.INFO, pathname="", lineno=0,
-            msg="Test message", args=(), exc_info=None,
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="Test message",
+            args=(),
+            exc_info=None,
         )
         formatted = formatter.format(record)
         assert "Test message" in formatted
@@ -208,18 +216,22 @@ class TestLoggingMiddleware:
 # ═══════════════════════════════════════════
 class TestEncryptionEdgeCases:
     def test_special_characters(self):
-        from app.services.encryption_service import encrypt_field, decrypt_field
+        from app.services.encryption_service import decrypt_field, encrypt_field
+
         text = "§123 — «artículo» del CCyCN ® ™ ¡¿? €£¥"
         assert decrypt_field(encrypt_field(text)) == text
 
     def test_newlines_and_tabs(self):
-        from app.services.encryption_service import encrypt_field, decrypt_field
+        from app.services.encryption_service import decrypt_field, encrypt_field
+
         text = "Línea 1\nLínea 2\n\tIndentada\r\nWindows line"
         assert decrypt_field(encrypt_field(text)) == text
 
     def test_json_string(self):
         import json
-        from app.services.encryption_service import encrypt_field, decrypt_field
+
+        from app.services.encryption_service import decrypt_field, encrypt_field
+
         data = json.dumps({"nombre": "Juan Pérez", "cuit": "20-12345678-9"})
         decrypted = decrypt_field(encrypt_field(data))
         parsed = json.loads(decrypted)
@@ -232,6 +244,7 @@ class TestEncryptionEdgeCases:
 class TestMemoryAdvanced:
     def test_chunk_preserves_all_content(self):
         from app.memory.memory_service import chunk_text
+
         original = "Párrafo uno. " * 200  # ~2600 chars
         chunks = chunk_text(original, max_chars=500, overlap=0)
         # All original content should be represented
@@ -241,6 +254,7 @@ class TestMemoryAdvanced:
     def test_chunk_with_legal_structure(self):
         """Test chunking with typical legal document structure."""
         from app.memory.memory_service import chunk_text
+
         doc = (
             "I. OBJETO\n\n"
             "Se plantea la nulidad absoluta de la extracción de datos.\n\n"
@@ -263,11 +277,13 @@ class TestMemoryAdvanced:
 class TestAppImport:
     def test_app_importable(self):
         from app.main import app
+
         assert app.title == "OroGest Lex API"
 
     def test_routes_registered(self):
         from app.main import app
-        paths = [route.path for route in app.routes]
+
+        paths = list(app.openapi()["paths"].keys())
         assert "/health" in paths
         assert "/" in paths
 

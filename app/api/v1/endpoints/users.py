@@ -5,8 +5,8 @@ DIRECTOR-only: list, update roles, deactivate users.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select, func
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import RequireRole
@@ -71,8 +71,11 @@ async def update_user(
 
     if changes:
         await create_audit_entry(
-            db, action="user.update", user_id=current_user.id,
-            resource_type="user", resource_id=str(user.id),
+            db,
+            action="user.update",
+            user_id=current_user.id,
+            resource_type="user",
+            resource_id=str(user.id),
             details={"changes": changes},
             ip_address=request.client.host if request.client else None,
         )
@@ -97,8 +100,11 @@ async def deactivate_user(
     user.is_active = False
 
     await create_audit_entry(
-        db, action="user.deactivate", user_id=current_user.id,
-        resource_type="user", resource_id=str(user.id),
+        db,
+        action="user.deactivate",
+        user_id=current_user.id,
+        resource_type="user",
+        resource_id=str(user.id),
         ip_address=request.client.host if request.client else None,
     )
     return user
@@ -118,8 +124,11 @@ async def reactivate_user(
     user.is_active = True
 
     await create_audit_entry(
-        db, action="user.reactivate", user_id=current_user.id,
-        resource_type="user", resource_id=str(user.id),
+        db,
+        action="user.reactivate",
+        user_id=current_user.id,
+        resource_type="user",
+        resource_id=str(user.id),
         ip_address=request.client.host if request.client else None,
     )
     return user

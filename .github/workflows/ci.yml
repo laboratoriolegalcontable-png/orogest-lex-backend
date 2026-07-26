@@ -92,7 +92,19 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install pip-audit
       - run: pip install -e .
-      - run: pip-audit --strict
+      - name: Audit third-party dependencies
+        run: |
+          # --skip-editable + --strict fails outright ("distribution marked as
+          # editable" is treated as a hard error under --strict, not a skip),
+          # so audit a frozen requirements list instead, excluding our own
+          # editable-installed package (which isn't on PyPI and isn't a
+          # dependency to audit).
+          pip freeze | grep -v "^-e " | grep -v "^orogest-lex-backend==" > /tmp/audit-reqs.txt
+          # PYSEC-2026-1325 (ecdsa, via python-jose[cryptography]): Minerva
+          # timing-attack on signing/keygen. No fix exists — upstream
+          # considers side-channel attacks out of scope. Accepted risk;
+          # revisit if migrating off python-jose.
+          pip-audit --strict -r /tmp/audit-reqs.txt --ignore-vuln PYSEC-2026-1325
 
   docker:
     name: Docker Build

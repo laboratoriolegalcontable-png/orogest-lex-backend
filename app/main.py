@@ -36,10 +36,11 @@ async def lifespan(app: FastAPI):
     # Try connecting to Redis
     try:
         from app.services.redis_service import get_redis
+
         redis = await get_redis()
         await redis.ping()
         logger.info("Redis connected ✅")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — startup probe: Redis is a soft dependency, must not block boot
         logger.warning(f"Redis not available (non-critical): {e}")
 
     # Log DB config (masked)
@@ -53,10 +54,11 @@ async def lifespan(app: FastAPI):
     # ── Shutdown ──
     try:
         from app.services.redis_service import close_redis
+
         await close_redis()
         logger.info("Redis disconnected")
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001 — shutdown: never block process exit on a soft dependency
+        logger.warning(f"Redis disconnect failed (non-critical): {e}")
     logger.info("OroGest Lex API shut down 🔴")
 
 
@@ -89,7 +91,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Request-ID", "X-Response-Time", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
+    expose_headers=[
+        "X-Request-ID",
+        "X-Response-Time",
+        "X-RateLimit-Limit",
+        "X-RateLimit-Remaining",
+    ],
 )
 
 # ── Routes ──
@@ -123,10 +130,11 @@ async def health_check():
     # Redis check
     try:
         from app.services.redis_service import get_redis
+
         redis = await get_redis()
         await redis.ping()
         health["redis"] = "connected"
-    except Exception:
+    except Exception:  # noqa: BLE001 — health check: Redis being down must not fail the whole probe
         health["redis"] = "unavailable"
 
     return health

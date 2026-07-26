@@ -6,7 +6,7 @@ Rate limited, audited, anti-hallucination enforced.
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import RequirePermission, get_current_user
+from app.api.deps import RequirePermission
 from app.core.security import Permission
 from app.db.session import get_db
 from app.models.models import User
@@ -42,8 +42,7 @@ async def ai_query(
         )
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
-    except Exception as e:
-        # Log the error but don't expose internals
+    except Exception as e:  # noqa: BLE001 — API error boundary: log to audit, respond 502, never leak internals
         await create_audit_entry(
             db,
             action="ai.query.error",
@@ -66,9 +65,7 @@ async def ai_query(
         details={
             "workflow": body.workflow,
             "tokens": result["tokens_used"],
-            "flags_count": len(sum(result["verification_flags"].values(), []))
-            if result["verification_flags"]
-            else 0,
+            "flags_count": sum(len(v) for v in result["verification_flags"].values()),
         },
         ip_address=request.client.host if request.client else None,
     )
@@ -110,7 +107,7 @@ async def ai_draft(
             workflow="escrito_blindado",
             system_prompt_override=body_with_workflow.system_prompt_override,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — API error boundary: log to audit, respond 502, never leak internals
         await create_audit_entry(
             db,
             action="ai.draft.error",
@@ -126,7 +123,10 @@ async def ai_draft(
         user_id=user.id,
         resource_type="ai_conversation",
         resource_id=str(conversation.id),
-        details={"tokens": result["tokens_used"], "case_id": str(body.case_id) if body.case_id else None},
+        details={
+            "tokens": result["tokens_used"],
+            "case_id": str(body.case_id) if body.case_id else None,
+        },
         ip_address=request.client.host if request.client else None,
     )
 

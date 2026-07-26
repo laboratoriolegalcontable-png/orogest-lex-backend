@@ -9,6 +9,15 @@ Provides:
 - Session/token blacklist for logout
 """
 
+# ruff: noqa: BLE001
+# Every Redis call in this file is wrapped in `except Exception: return <fail-open
+# default>` on purpose: Redis here is a best-effort cache/rate-limiter/blacklist,
+# not a source of truth, and redis-py can raise many distinct exception types for
+# the same underlying condition (connection down, timeout, cluster failover). The
+# intent is "any Redis failure degrades gracefully" — narrowing to specific
+# exception classes would just mean re-adding every one of them, or worse, an
+# uncaught type taking down a request over what should be a soft dependency.
+
 import json
 import time
 from typing import Any
@@ -144,7 +153,9 @@ class RedisRateLimiter:
                 await r.zrem(full_key, str(now))
                 # Calculate retry-after from oldest entry
                 oldest = await r.zrange(full_key, 0, 0, withscores=True)
-                retry_after = int(window_seconds - (now - oldest[0][1])) if oldest else window_seconds
+                retry_after = (
+                    int(window_seconds - (now - oldest[0][1])) if oldest else window_seconds
+                )
                 return False, 0, max(1, retry_after)
 
             remaining = max_requests - current_count - 1

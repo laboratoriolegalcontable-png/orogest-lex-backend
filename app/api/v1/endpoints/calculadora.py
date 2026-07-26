@@ -17,7 +17,7 @@ Rubros calculados:
 8. Total con y sin intereses
 """
 
-from datetime import date, datetime
+from datetime import date
 from enum import Enum
 
 from fastapi import APIRouter, Depends
@@ -40,16 +40,22 @@ class CalculoRequest(BaseModel):
     Datos necesarios para el cálculo.
     El usuario DEBE proveer la mejor remuneración mensual normal y habitual.
     """
+
     # Datos del trabajador
     fecha_ingreso: date
     fecha_egreso: date
     tipo_contrato: TipoContrato = TipoContrato.INDETERMINADO
 
     # Remuneración (el usuario la provee — NO la inventamos)
-    mejor_remuneracion_mensual: float = Field(gt=0, description="Mejor remuneración mensual, normal y habitual (bruta)")
+    mejor_remuneracion_mensual: float = Field(
+        gt=0, description="Mejor remuneración mensual, normal y habitual (bruta)"
+    )
 
     # Topes (el usuario los provee — son variables según convenio)
-    tope_convencional: float | None = Field(None, description="Tope Art. 245: 3x promedio convenio colectivo [VERIFICAR con RIPTE/convenio]")
+    tope_convencional: float | None = Field(
+        None,
+        description="Tope Art. 245: 3x promedio convenio colectivo [VERIFICAR con RIPTE/convenio]",
+    )
 
     # Opcionales para rubros extras
     incluir_sac_proporcional: bool = True
@@ -60,7 +66,9 @@ class CalculoRequest(BaseModel):
     dias_vacaciones_correspondientes: int | None = None  # Si no se pone, se calcula por antigüedad
 
     # Intereses
-    tasa_interes_anual: float | None = Field(None, description="Tasa de interés anual para cálculo (ej: 36.0 = 36%)")
+    tasa_interes_anual: float | None = Field(
+        None, description="Tasa de interés anual para cálculo (ej: 36.0 = 36%)"
+    )
     fecha_calculo_intereses: date | None = None
 
 
@@ -176,13 +184,15 @@ async def calcular_indemnizacion(
         periodos = anos + 1  # Fracción mayor a 3 meses = período completo (jurisprudencia)
 
     monto_245 = base * periodos
-    rubros.append(RubroCalculo(
-        concepto="Indemnización por antigüedad",
-        base_calculo=f"${base:,.2f} x {periodos} períodos",
-        monto=round(monto_245, 2),
-        articulo="Art. 245 LCT",
-        notas=f"Antigüedad: {anos} años, {meses} meses"
-    ))
+    rubros.append(
+        RubroCalculo(
+            concepto="Indemnización por antigüedad",
+            base_calculo=f"${base:,.2f} x {periodos} períodos",
+            monto=round(monto_245, 2),
+            articulo="Art. 245 LCT",
+            notas=f"Antigüedad: {anos} años, {meses} meses",
+        )
+    )
 
     # ── 2. Preaviso (Art. 231-232) ──
     if anos < 5:
@@ -191,21 +201,25 @@ async def calcular_indemnizacion(
         meses_preaviso = 2
 
     monto_preaviso = body.mejor_remuneracion_mensual * meses_preaviso
-    rubros.append(RubroCalculo(
-        concepto="Indemnización sustitutiva de preaviso",
-        base_calculo=f"${body.mejor_remuneracion_mensual:,.2f} x {meses_preaviso} mes(es)",
-        monto=round(monto_preaviso, 2),
-        articulo="Art. 232 LCT",
-    ))
+    rubros.append(
+        RubroCalculo(
+            concepto="Indemnización sustitutiva de preaviso",
+            base_calculo=f"${body.mejor_remuneracion_mensual:,.2f} x {meses_preaviso} mes(es)",
+            monto=round(monto_preaviso, 2),
+            articulo="Art. 232 LCT",
+        )
+    )
 
     # SAC sobre preaviso
     sac_preaviso = monto_preaviso / 12
-    rubros.append(RubroCalculo(
-        concepto="SAC sobre preaviso",
-        base_calculo=f"${monto_preaviso:,.2f} / 12",
-        monto=round(sac_preaviso, 2),
-        articulo="Art. 121 LCT",
-    ))
+    rubros.append(
+        RubroCalculo(
+            concepto="SAC sobre preaviso",
+            base_calculo=f"${monto_preaviso:,.2f} / 12",
+            monto=round(sac_preaviso, 2),
+            articulo="Art. 121 LCT",
+        )
+    )
 
     # ── 3. Integración mes de despido (Art. 233) ──
     if body.incluir_integracion:
@@ -213,20 +227,24 @@ async def calcular_indemnizacion(
         if dias_restantes > 0:
             valor_dia = body.mejor_remuneracion_mensual / 30
             monto_integracion = valor_dia * dias_restantes
-            rubros.append(RubroCalculo(
-                concepto="Integración mes de despido",
-                base_calculo=f"${valor_dia:,.2f}/día x {dias_restantes} días",
-                monto=round(monto_integracion, 2),
-                articulo="Art. 233 LCT",
-            ))
+            rubros.append(
+                RubroCalculo(
+                    concepto="Integración mes de despido",
+                    base_calculo=f"${valor_dia:,.2f}/día x {dias_restantes} días",
+                    monto=round(monto_integracion, 2),
+                    articulo="Art. 233 LCT",
+                )
+            )
             # SAC sobre integración
             sac_integ = monto_integracion / 12
-            rubros.append(RubroCalculo(
-                concepto="SAC sobre integración",
-                base_calculo=f"${monto_integracion:,.2f} / 12",
-                monto=round(sac_integ, 2),
-                articulo="Art. 121 LCT",
-            ))
+            rubros.append(
+                RubroCalculo(
+                    concepto="SAC sobre integración",
+                    base_calculo=f"${monto_integracion:,.2f} / 12",
+                    monto=round(sac_integ, 2),
+                    articulo="Art. 121 LCT",
+                )
+            )
 
     # ── 4. SAC proporcional ──
     if body.incluir_sac_proporcional:
@@ -237,12 +255,14 @@ async def calcular_indemnizacion(
             dias_semestre = (body.fecha_egreso - date(body.fecha_egreso.year, 7, 1)).days
 
         sac_prop = body.mejor_remuneracion_mensual / 2 * dias_semestre / 182.5
-        rubros.append(RubroCalculo(
-            concepto="SAC proporcional",
-            base_calculo=f"(${body.mejor_remuneracion_mensual:,.2f}/2) x {dias_semestre}/182.5 días",
-            monto=round(max(0, sac_prop), 2),
-            articulo="Art. 123 LCT",
-        ))
+        rubros.append(
+            RubroCalculo(
+                concepto="SAC proporcional",
+                base_calculo=f"(${body.mejor_remuneracion_mensual:,.2f}/2) x {dias_semestre}/182.5 días",
+                monto=round(max(0, sac_prop), 2),
+                articulo="Art. 123 LCT",
+            )
+        )
 
     # ── 5. Vacaciones no gozadas ──
     if body.incluir_vacaciones:
@@ -253,35 +273,41 @@ async def calcular_indemnizacion(
         valor_dia_vac = body.mejor_remuneracion_mensual / 25  # Art. 155 LCT: /25
         monto_vac = valor_dia_vac * dias_vac_prop
 
-        rubros.append(RubroCalculo(
-            concepto="Vacaciones no gozadas (proporcional)",
-            base_calculo=f"${valor_dia_vac:,.2f}/día x {dias_vac_prop:.1f} días",
-            monto=round(max(0, monto_vac), 2),
-            articulo="Art. 156 LCT",
-            notas=f"Base: {dias_vac} días por antigüedad, proporcional a {dias_trabajados_ano} días trabajados",
-        ))
+        rubros.append(
+            RubroCalculo(
+                concepto="Vacaciones no gozadas (proporcional)",
+                base_calculo=f"${valor_dia_vac:,.2f}/día x {dias_vac_prop:.1f} días",
+                monto=round(max(0, monto_vac), 2),
+                articulo="Art. 156 LCT",
+                notas=f"Base: {dias_vac} días por antigüedad, proporcional a {dias_trabajados_ano} días trabajados",
+            )
+        )
 
     # ── 6. Art. 2 Ley 25.323 ──
     if body.incluir_art2_ley25323:
         monto_art2 = monto_245 * 0.5
-        rubros.append(RubroCalculo(
-            concepto="Incremento Art. 2 Ley 25.323",
-            base_calculo=f"50% de indemnización Art. 245 (${monto_245:,.2f})",
-            monto=round(monto_art2, 2),
-            articulo="Art. 2 Ley 25.323",
-            notas="Requiere intimación fehaciente previa sin resultado en plazo legal",
-        ))
+        rubros.append(
+            RubroCalculo(
+                concepto="Incremento Art. 2 Ley 25.323",
+                base_calculo=f"50% de indemnización Art. 245 (${monto_245:,.2f})",
+                monto=round(monto_art2, 2),
+                articulo="Art. 2 Ley 25.323",
+                notas="Requiere intimación fehaciente previa sin resultado en plazo legal",
+            )
+        )
 
     # ── 7. Art. 80 LCT ──
     if body.incluir_art80:
         monto_art80 = body.mejor_remuneracion_mensual * 3
-        rubros.append(RubroCalculo(
-            concepto="Multa por certificados (Art. 80 LCT)",
-            base_calculo=f"3 x mejor remuneración (${body.mejor_remuneracion_mensual:,.2f})",
-            monto=round(monto_art80, 2),
-            articulo="Art. 80 LCT / Art. 45 Ley 25.345",
-            notas="Requiere intimación previa de 30 días hábiles tras extinción",
-        ))
+        rubros.append(
+            RubroCalculo(
+                concepto="Multa por certificados (Art. 80 LCT)",
+                base_calculo=f"3 x mejor remuneración (${body.mejor_remuneracion_mensual:,.2f})",
+                monto=round(monto_art80, 2),
+                articulo="Art. 80 LCT / Art. 45 Ley 25.345",
+                notas="Requiere intimación previa de 30 días hábiles tras extinción",
+            )
+        )
 
     # ── Subtotal ──
     subtotal = round(sum(r.monto for r in rubros), 2)
@@ -298,12 +324,18 @@ async def calcular_indemnizacion(
     total = round(subtotal + (intereses or 0), 2)
 
     # ── Advertencias generales ──
-    advertencias.extend([
-        "[VERIFICAR] Los montos de SMVM, RIPTE y topes convencionales cambian periódicamente. "
-        "Consultar fuentes oficiales del Ministerio de Trabajo.",
-        "[VERIFICAR] Este cálculo es orientativo. La liquidación definitiva debe contemplar "
-        "el convenio colectivo aplicable y la jurisprudencia del fuero.",
-    ])
+    advertencias.extend(
+        [
+            (
+                "[VERIFICAR] Los montos de SMVM, RIPTE y topes convencionales cambian periódicamente. "
+                "Consultar fuentes oficiales del Ministerio de Trabajo."
+            ),
+            (
+                "[VERIFICAR] Este cálculo es orientativo. La liquidación definitiva debe contemplar "
+                "el convenio colectivo aplicable y la jurisprudencia del fuero."
+            ),
+        ]
+    )
 
     return CalculoResponse(
         antiguedad_anos=anos,

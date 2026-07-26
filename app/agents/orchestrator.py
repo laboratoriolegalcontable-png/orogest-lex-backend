@@ -12,13 +12,10 @@ NOT a fantasy autonomous AI. Claude handles the intelligence;
 this module handles the coordination and state.
 """
 
-import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-
-from sqlalchemy.ext.asyncio import AsyncSession
 
 
 # ═══════════════════════════════════════════
@@ -38,7 +35,7 @@ class Domain(str, Enum):
 
 class Urgency(str, Enum):
     CRITICAL = "critica"  # 🚨 detenido, vence hoy, habeas corpus
-    HIGH = "alta"         # ⚠️ plazo próximo, cautelar
+    HIGH = "alta"  # ⚠️ plazo próximo, cautelar
     NORMAL = "normal"
 
 
@@ -55,58 +52,149 @@ class Workflow(str, Enum):
 # ═══════════════════════════════════════════
 URGENCY_KEYWORDS = {
     Urgency.CRITICAL: [
-        "detenido", "preso", "vence hoy", "urgente", "cautelar",
-        "hábeas corpus", "habeas corpus", "siniestro", "despido inmediato",
+        "detenido",
+        "preso",
+        "vence hoy",
+        "urgente",
+        "cautelar",
+        "hábeas corpus",
+        "habeas corpus",
+        "siniestro",
+        "despido inmediato",
     ],
     Urgency.HIGH: [
-        "plazo", "vencimiento", "audiencia mañana", "notificación",
-        "embargo", "inhibición",
+        "plazo",
+        "vencimiento",
+        "audiencia mañana",
+        "notificación",
+        "embargo",
+        "inhibición",
     ],
 }
 
 DOMAIN_KEYWORDS: dict[Domain, list[str]] = {
     Domain.PENAL: [
-        "penal", "imputado", "fiscal", "defensa", "nulidad", "casación",
-        "recurso", "prisión", "libertad", "morigeración", "excarcelación",
-        "probation", "art. 76", "sobreseimiento", "requerimiento", "elevación",
-        "cppn", "cpp", "tribunal oral", "cámara", "alegato",
+        "penal",
+        "imputado",
+        "fiscal",
+        "defensa",
+        "nulidad",
+        "casación",
+        "recurso",
+        "prisión",
+        "libertad",
+        "morigeración",
+        "excarcelación",
+        "probation",
+        "art. 76",
+        "sobreseimiento",
+        "requerimiento",
+        "elevación",
+        "cppn",
+        "cpp",
+        "tribunal oral",
+        "cámara",
+        "alegato",
     ],
     Domain.INMOBILIARIO: [
-        "inmueble", "propiedad", "compraventa", "boleto", "escritura",
-        "titulo", "folio real", "matrícula", "remate", "subasta",
-        "due diligence", "corredor", "comisión", "expensas", "hipoteca",
+        "inmueble",
+        "propiedad",
+        "compraventa",
+        "boleto",
+        "escritura",
+        "titulo",
+        "folio real",
+        "matrícula",
+        "remate",
+        "subasta",
+        "due diligence",
+        "corredor",
+        "comisión",
+        "expensas",
+        "hipoteca",
     ],
     Domain.SOCIETARIO: [
-        "sociedad", "sas", "srl", "sa", "acta", "asamblea", "directorio",
-        "estatuto", "igj", "constitución societaria", "aporte", "socio",
+        "sociedad",
+        "sas",
+        "srl",
+        "sa",
+        "acta",
+        "asamblea",
+        "directorio",
+        "estatuto",
+        "igj",
+        "constitución societaria",
+        "aporte",
+        "socio",
     ],
     Domain.LABORAL: [
-        "laboral", "despido", "indemnización", "art 245", "lct",
-        "ripte", "preaviso", "sac", "vacaciones", "carta documento",
+        "laboral",
+        "despido",
+        "indemnización",
+        "art 245",
+        "lct",
+        "ripte",
+        "preaviso",
+        "sac",
+        "vacaciones",
+        "carta documento",
     ],
     Domain.COMPLIANCE: [
-        "uif", "lavado", "pld", "ros", "siplaf", "pep", "kyc",
-        "debida diligencia", "compliance", "res 21/2023",
+        "uif",
+        "lavado",
+        "pld",
+        "ros",
+        "siplaf",
+        "pep",
+        "kyc",
+        "debida diligencia",
+        "compliance",
+        "res 21/2023",
     ],
 }
 
 WORKFLOW_KEYWORDS: dict[Workflow, list[str]] = {
     Workflow.ESCRITO_BLINDADO: [
-        "escrito", "nulidad", "recurso", "planteo", "defensa",
-        "habeas corpus", "excepción", "contestación", "alegato",
-        "casación", "redactar", "blindar",
+        "escrito",
+        "nulidad",
+        "recurso",
+        "planteo",
+        "defensa",
+        "habeas corpus",
+        "excepción",
+        "contestación",
+        "alegato",
+        "casación",
+        "redactar",
+        "blindar",
     ],
     Workflow.DUE_DILIGENCE: [
-        "due diligence", "verificar propiedad", "checklist",
-        "inhibiciones", "deudas", "folio", "título",
+        "due diligence",
+        "verificar propiedad",
+        "checklist",
+        "inhibiciones",
+        "deudas",
+        "folio",
+        "título",
     ],
     Workflow.ESTRATEGIA_PROCESAL: [
-        "estrategia", "riesgo procesal", "probabilidad",
-        "chances", "scoring", "análisis de causa",
+        "estrategia",
+        "riesgo procesal",
+        "probabilidad",
+        "chances",
+        "scoring",
+        "análisis de causa",
     ],
     Workflow.ESCUDO_PATRIMONIAL: [
-        "inversor", "propuesta", "servicio", "fee", "membresía",
-        "escudo", "presentación", "pitch", "plan",
+        "inversor",
+        "propuesta",
+        "servicio",
+        "fee",
+        "membresía",
+        "escudo",
+        "presentación",
+        "pitch",
+        "plan",
     ],
 }
 
@@ -118,7 +206,7 @@ class ClassificationResult:
     workflow: Workflow
     confidence: float  # 0.0 to 1.0
     matched_keywords: list[str] = field(default_factory=list)
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 def classify_request(text: str) -> ClassificationResult:
@@ -159,7 +247,9 @@ def classify_request(text: str) -> ClassificationResult:
             workflow_scores[wf] = score
             matched.extend(f"workflow:{kw}" for kw in keywords if kw in text_lower)
 
-    workflow = max(workflow_scores, key=workflow_scores.get) if workflow_scores else Workflow.GENERAL
+    workflow = (
+        max(workflow_scores, key=workflow_scores.get) if workflow_scores else Workflow.GENERAL
+    )
 
     # 4. Confidence (simple heuristic)
     total_matches = len(matched)
@@ -200,7 +290,7 @@ class OrchestratorTask:
     state: TaskState = TaskState.PENDING
     result: str | None = None
     error: str | None = None
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     completed_at: str | None = None
 
     def classify(self):
@@ -213,12 +303,12 @@ class OrchestratorTask:
     def complete(self, result: str):
         self.result = result
         self.state = TaskState.COMPLETED
-        self.completed_at = datetime.now(timezone.utc).isoformat()
+        self.completed_at = datetime.now(UTC).isoformat()
 
     def fail(self, error: str):
         self.error = error
         self.state = TaskState.FAILED
-        self.completed_at = datetime.now(timezone.utc).isoformat()
+        self.completed_at = datetime.now(UTC).isoformat()
 
     def to_dict(self) -> dict:
         return {
@@ -229,7 +319,9 @@ class OrchestratorTask:
                 "urgency": self.classification.urgency.value,
                 "workflow": self.classification.workflow.value,
                 "confidence": self.classification.confidence,
-            } if self.classification else None,
+            }
+            if self.classification
+            else None,
             "created_at": self.created_at,
             "completed_at": self.completed_at,
         }

@@ -12,17 +12,15 @@ All docs carry: Estudio Oro S.A.S. header, firma, fecha, anti-hallucination warn
 """
 
 import io
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
+from datetime import UTC, datetime
 
 # We use python-docx for DOCX generation
 # If not available, fall back to Markdown export
 try:
     from docx import Document as DocxDocument
-    from docx.shared import Pt, Inches, Cm, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.enum.section import WD_ORIENT
+    from docx.shared import Pt, RGBColor
+
     HAS_DOCX = True
 except ImportError:
     HAS_DOCX = False
@@ -100,9 +98,14 @@ def generate_escrito_docx(
     """
     if not HAS_DOCX:
         return _fallback_markdown(
-            "ESCRITO JUDICIAL", tribunal=tribunal, causa=causa,
-            caratula=caratula, objeto=objeto, hechos=hechos,
-            derecho=derecho, petitorio=petitorio,
+            "ESCRITO JUDICIAL",
+            tribunal=tribunal,
+            causa=causa,
+            caratula=caratula,
+            objeto=objeto,
+            hechos=hechos,
+            derecho=derecho,
+            petitorio=petitorio,
         )
 
     doc = DocxDocument()
@@ -110,7 +113,7 @@ def generate_escrito_docx(
 
     # Date
     if not fecha:
-        fecha = datetime.now(timezone.utc).strftime("%d de %B de %Y")
+        fecha = datetime.now(UTC).strftime("%d de %B de %Y")
     p_date = doc.add_paragraph()
     p_date.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     p_date.add_run(f"Buenos Aires, {fecha}").font.size = Pt(11)
@@ -182,15 +185,17 @@ def generate_carta_documento_docx(
     """
     if not HAS_DOCX:
         return _fallback_markdown(
-            "CARTA DOCUMENTO", destinatario=destinatario,
-            asunto=asunto, cuerpo=cuerpo,
+            "CARTA DOCUMENTO",
+            destinatario=destinatario,
+            asunto=asunto,
+            cuerpo=cuerpo,
         )
 
     doc = DocxDocument()
     _add_header(doc, "CARTA DOCUMENTO")
 
     if not fecha:
-        fecha = datetime.now(timezone.utc).strftime("%d de %B de %Y")
+        fecha = datetime.now(UTC).strftime("%d de %B de %Y")
 
     doc.add_paragraph(f"Buenos Aires, {fecha}")
     doc.add_paragraph()
@@ -243,7 +248,7 @@ def generate_due_diligence_report_docx(
     doc = DocxDocument()
     _add_header(doc, "INFORME DE DUE DILIGENCE INMOBILIARIO")
 
-    fecha = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+    fecha = datetime.now(UTC).strftime("%d/%m/%Y")
     doc.add_paragraph(f"Fecha: {fecha}")
     doc.add_paragraph()
 
@@ -288,9 +293,7 @@ def generate_due_diligence_report_docx(
     run2.bold = True
     run2.font.size = Pt(12)
 
-    status_icons = {
-        "ok": "✅", "problema": "❌", "pendiente": "⏳", "no_aplica": "➖"
-    }
+    status_icons = {"ok": "✅", "problema": "❌", "pendiente": "⏳", "no_aplica": "➖"}
 
     for key, item in checklist.items():
         status = item.get("status", "pendiente")
@@ -336,7 +339,7 @@ def _fallback_markdown(title: str, **kwargs) -> bytes:
     lines = [
         f"# {title}",
         f"## {ESTUDIO_HEADER}",
-        f"Fecha: {datetime.now(timezone.utc).strftime('%d/%m/%Y')}",
+        f"Fecha: {datetime.now(UTC).strftime('%d/%m/%Y')}",
         "",
     ]
     for key, value in kwargs.items():
@@ -344,8 +347,7 @@ def _fallback_markdown(title: str, **kwargs) -> bytes:
         lines.append("")
 
     lines.append("---")
-    for line in FIRMA_LINES:
-        lines.append(line)
+    lines.extend(FIRMA_LINES)
     lines.append("")
     lines.append(f"*{ANTI_HALLUCINATION_WARNING}*")
 

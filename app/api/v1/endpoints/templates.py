@@ -8,7 +8,7 @@ Templates use {{variable}} placeholders that get replaced with actual values.
 import re
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import RequirePermission, RequireRole
 from app.core.security import Permission, Role
 from app.db.session import get_db
-from app.models.models import WritingTemplate, User
+from app.models.models import User, WritingTemplate
 from app.services.audit_service import create_audit_entry
 
 router = APIRouter(prefix="/templates", tags=["templates"])
@@ -70,7 +70,10 @@ PROVEER DE CONFORMIDAD, SERÁ JUSTICIA.
             "fojas": {"type": "string"},
             "hechos": {"type": "text", "required": True},
             "derecho": {"type": "text", "required": True},
-            "firma": {"type": "string", "default": "Dr. Diego Orosa\nAbogado — CPACF T° 145 F° 433\nEstudio Oro S.A.S."},
+            "firma": {
+                "type": "string",
+                "default": "Dr. Diego Orosa\nAbogado — CPACF T° 145 F° 433\nEstudio Oro S.A.S.",
+            },
         },
     },
     {
@@ -104,7 +107,10 @@ Queda Ud. debidamente notificado/a.
             "mandante": {"type": "string", "required": True},
             "obligacion": {"type": "text", "required": True},
             "cuerpo_adicional": {"type": "text", "default": ""},
-            "firma": {"type": "string", "default": "Dr. Diego Orosa\nAbogado — CPACF T° 145 F° 433\nEstudio Oro S.A.S."},
+            "firma": {
+                "type": "string",
+                "default": "Dr. Diego Orosa\nAbogado — CPACF T° 145 F° 433\nEstudio Oro S.A.S.",
+            },
         },
     },
     {
@@ -149,8 +155,14 @@ PROVEER DE CONFORMIDAD, SERÁ JUSTICIA.
             "cliente": {"type": "string", "required": True},
             "fundamentos": {"type": "text", "required": True},
             "domicilio_cliente": {"type": "string", "required": True},
-            "condiciones_adicionales": {"type": "text", "default": "Dispositivo de geolocalización electrónica"},
-            "firma": {"type": "string", "default": "Dr. Diego Orosa\nAbogado — CPACF T° 145 F° 433\nEstudio Oro S.A.S."},
+            "condiciones_adicionales": {
+                "type": "text",
+                "default": "Dispositivo de geolocalización electrónica",
+            },
+            "firma": {
+                "type": "string",
+                "default": "Dr. Diego Orosa\nAbogado — CPACF T° 145 F° 433\nEstudio Oro S.A.S.",
+            },
         },
     },
 ]
@@ -250,8 +262,11 @@ async def create_template(
     await db.flush()
 
     await create_audit_entry(
-        db, action="template.create", user_id=user.id,
-        resource_type="template", resource_id=str(template.id),
+        db,
+        action="template.create",
+        user_id=user.id,
+        resource_type="template",
+        resource_id=str(template.id),
         details={"name": template.name, "branch": template.branch},
         ip_address=request.client.host if request.client else None,
     )
@@ -325,7 +340,9 @@ async def seed_system_templates(
     await db.flush()
 
     await create_audit_entry(
-        db, action="template.seed_system", user_id=user.id,
+        db,
+        action="template.seed_system",
+        user_id=user.id,
         details={"created": created},
         ip_address=request.client.host if request.client else None,
     )

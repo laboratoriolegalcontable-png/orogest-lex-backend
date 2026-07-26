@@ -4,7 +4,7 @@ Complete activity feed for a case, aggregated from audit log.
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import or_, select
@@ -62,9 +62,11 @@ async def case_timeline(
                 # Direct case actions
                 (AuditLog.resource_type == "case") & (AuditLog.resource_id == case_id_str),
                 # Documents of this case (we check details JSON)
-                (AuditLog.resource_type == "document") & (AuditLog.details["case_id"].astext == case_id_str),
+                (AuditLog.resource_type == "document")
+                & (AuditLog.details["case_id"].astext == case_id_str),
                 # AI conversations linked to this case
-                (AuditLog.resource_type == "ai_conversation") & (AuditLog.details["case_id"].astext == case_id_str),
+                (AuditLog.resource_type == "ai_conversation")
+                & (AuditLog.details["case_id"].astext == case_id_str),
             )
         )
         .order_by(AuditLog.timestamp.desc())
@@ -77,7 +79,10 @@ async def case_timeline(
 
     # Also get documents for this case (for richer timeline)
     docs_result = await db.execute(
-        select(Document).where(Document.case_id == case_id).order_by(Document.created_at.desc()).limit(10)
+        select(Document)
+        .where(Document.case_id == case_id)
+        .order_by(Document.created_at.desc())
+        .limit(10)
     )
     docs = {str(d.id): d for d in docs_result.scalars().all()}
 
@@ -130,9 +135,9 @@ async def user_activity(
     user: User = Depends(RequirePermission(Permission.AUDIT_READ)),
 ):
     """Get activity timeline for a specific user."""
-    from datetime import timedelta, timezone
+    from datetime import timedelta
 
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
 
     stmt = (
         select(AuditLog)

@@ -12,12 +12,11 @@ Models:
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,
     DateTime,
-    Enum as SAEnum,
     Float,
     ForeignKey,
     Index,
@@ -25,6 +24,9 @@ from sqlalchemy import (
     String,
     Text,
     func,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -43,7 +45,12 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(
-        SAEnum(Role, name="user_role", create_constraint=True),
+        SAEnum(
+            Role,
+            name="user_role",
+            create_constraint=True,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         default=Role.PASANTE,
         nullable=False,
     )
@@ -52,8 +59,12 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
 
     # Relationships
     cases: Mapped[list["Case"]] = relationship(back_populates="assigned_to_user", lazy="selectin")
-    documents: Mapped[list["Document"]] = relationship(back_populates="created_by_user", lazy="selectin")
-    ai_conversations: Mapped[list["AIConversation"]] = relationship(back_populates="user", lazy="selectin")
+    documents: Mapped[list["Document"]] = relationship(
+        back_populates="created_by_user", lazy="selectin"
+    )
+    ai_conversations: Mapped[list["AIConversation"]] = relationship(
+        back_populates="user", lazy="selectin"
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email} role={self.role}>"
@@ -64,7 +75,6 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
 # ═══════════════════════════════════════════
 class CaseBranch(str, SAEnum):
     """Ramas del derecho que maneja Estudio Oro."""
-    pass
 
 
 CASE_BRANCHES = [
@@ -98,24 +108,33 @@ class Case(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     # Identification
     case_number: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     internal_id: Mapped[str] = mapped_column(
-        String(50), unique=True, nullable=False, index=True,
-        default=lambda: f"EO-{datetime.now(timezone.utc).year}-{uuid.uuid4().hex[:6].upper()}"
+        String(50),
+        unique=True,
+        nullable=False,
+        index=True,
+        default=lambda: f"EO-{datetime.now(UTC).year}-{uuid.uuid4().hex[:6].upper()}",
     )
     caption: Mapped[str] = mapped_column(String(500), nullable=False)  # Carátula
 
     # Classification
-    branch: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # from CASE_BRANCHES
+    branch: Mapped[str] = mapped_column(
+        String(50), nullable=False, index=True
+    )  # from CASE_BRANCHES
     status: Mapped[str] = mapped_column(String(50), default="activa", index=True)
 
     # Jurisdiction
-    jurisdiction: Mapped[str | None] = mapped_column(String(100), nullable=True)  # CABA / PBA / Federal
+    jurisdiction: Mapped[str | None] = mapped_column(
+        String(100), nullable=True
+    )  # CABA / PBA / Federal
     court: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Tribunal
     judge: Mapped[str | None] = mapped_column(String(255), nullable=True)
     prosecutor: Mapped[str | None] = mapped_column(String(255), nullable=True)  # Fiscal
 
     # Client
     client_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    client_role: Mapped[str | None] = mapped_column(String(50), nullable=True)  # imputado / querellante / actor / demandado
+    client_role: Mapped[str | None] = mapped_column(
+        String(50), nullable=True
+    )  # imputado / querellante / actor / demandado
 
     # Risk scoring (Workflow 3 del Oráculo)
     risk_score: Mapped[float | None] = mapped_column(Float, nullable=True)  # 0-100
@@ -203,7 +222,14 @@ class Document(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
 # ═══════════════════════════════════════════
 # PROPERTY (Inmuebles — Workflow 2 Due Diligence)
 # ═══════════════════════════════════════════
-PROPERTY_STATUSES = ["captado", "en_due_diligence", "publicado", "reservado", "vendido", "archivado"]
+PROPERTY_STATUSES = [
+    "captado",
+    "en_due_diligence",
+    "publicado",
+    "reservado",
+    "vendido",
+    "archivado",
+]
 
 
 class Property(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
@@ -215,7 +241,9 @@ class Property(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     province: Mapped[str] = mapped_column(String(100), nullable=False)
     country: Mapped[str] = mapped_column(String(10), default="ARG")  # ARG / ESP / URY
 
-    property_type: Mapped[str] = mapped_column(String(50), nullable=False)  # departamento / casa / terreno / local / oficina
+    property_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # departamento / casa / terreno / local / oficina
     status: Mapped[str] = mapped_column(String(50), default="captado", index=True)
 
     # Valuation
@@ -228,7 +256,9 @@ class Property(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
 
     # Due diligence (Workflow 2 checklist result)
     dd_checklist: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    dd_risk_level: Mapped[str | None] = mapped_column(String(10), nullable=True)  # verde / amarillo / rojo
+    dd_risk_level: Mapped[str | None] = mapped_column(
+        String(10), nullable=True
+    )  # verde / amarillo / rojo
     dd_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     owner_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -266,9 +296,7 @@ class AIConversation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     # Anti-hallucination tracking
     verification_flags_count: Mapped[int] = mapped_column(Integer, default=0)
 
-    __table_args__ = (
-        Index("ix_ai_conv_user_created", "user_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_ai_conv_user_created", "user_id", "created_at"),)
 
 
 # ═══════════════════════════════════════════
@@ -279,7 +307,7 @@ class AuditLog(Base, UUIDPrimaryKeyMixin):
 
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         index=True,
     )
@@ -298,9 +326,7 @@ class AuditLog(Base, UUIDPrimaryKeyMixin):
     previous_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="GENESIS")
     current_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
 
-    __table_args__ = (
-        Index("ix_audit_resource", "resource_type", "resource_id"),
-    )
+    __table_args__ = (Index("ix_audit_resource", "resource_type", "resource_id"),)
 
 
 # ═══════════════════════════════════════════
@@ -343,9 +369,7 @@ class Client(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     # Relations
     cases: Mapped[list["CaseClient"]] = relationship(back_populates="client", lazy="selectin")
 
-    __table_args__ = (
-        Index("ix_clients_name_doc", "full_name", "document_number"),
-    )
+    __table_args__ = (Index("ix_clients_name_doc", "full_name", "document_number"),)
 
     def __repr__(self) -> str:
         return f"<Client {self.full_name} [{self.document_number}]>"
@@ -371,9 +395,7 @@ class CaseClient(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     case: Mapped["Case"] = relationship(lazy="selectin")
     client: Mapped["Client"] = relationship(back_populates="cases", lazy="selectin")
 
-    __table_args__ = (
-        Index("ix_case_clients_unique", "case_id", "client_id", "role", unique=True),
-    )
+    __table_args__ = (Index("ix_case_clients_unique", "case_id", "client_id", "role", unique=True),)
 
 
 # ═══════════════════════════════════════════

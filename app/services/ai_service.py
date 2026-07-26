@@ -10,14 +10,17 @@ Flow:
 5. Store conversation + new memory chunks
 """
 
+import logging
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+
+logger = logging.getLogger("orogest.ai_service")
 from app.models.models import AIConversation
 
 settings = get_settings()
@@ -71,7 +74,7 @@ def _build_system_prompt(
     if case_info:
         ctx = "\n--- CONTEXTO DE LA CAUSA ACTIVA ---\n"
         for key in ("caption", "branch", "jurisdiction", "court", "case_number"):
-            ctx += f"{key.replace('_',' ').title()}: {case_info.get(key, 'N/D')}\n"
+            ctx += f"{key.replace('_', ' ').title()}: {case_info.get(key, 'N/D')}\n"
         if case_info.get("notes"):
             ctx += f"Notas: {case_info['notes'][:500]}\n"
         parts.append(ctx)
@@ -158,22 +161,27 @@ async def create_or_continue_conversation(
     case_info = None
     try:
         from app.memory.memory_service import get_context_for_query
+
         branch = None
         if case_id:
             from app.models.models import Case
+
             case = await db.get(Case, case_id)
             if case:
                 branch = case.branch
                 case_info = {
-                    "caption": case.caption, "branch": case.branch,
-                    "jurisdiction": case.jurisdiction, "court": case.court,
-                    "case_number": case.case_number, "notes": case.notes,
+                    "caption": case.caption,
+                    "branch": case.branch,
+                    "jurisdiction": case.jurisdiction,
+                    "court": case.court,
+                    "case_number": case.case_number,
+                    "notes": case.notes,
                 }
         rag_context = await get_context_for_query(
             db, message, case_id=str(case_id) if case_id else None, branch=branch
         )
-    except Exception:
-        pass
+    except Exception as e:  # noqa: BLE001 — RAG context is an enrichment, must not block the query
+        logger.warning(f"RAG context lookup failed for case {case_id}: {e}")
 
     result = await query_claude(
         message=message,
@@ -184,12 +192,12 @@ async def create_or_continue_conversation(
         case_info=case_info,
     )
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     new_messages = history + [
         {"role": "user", "content": message, "timestamp": now},
         {"role": "assistant", "content": result["response"], "timestamp": now},
     ]
-    flags_count = len(sum(result["verification_flags"].values(), [])) if result["verification_flags"] else 0
+    flags_count = sum(len(v) for v in result["verification_flags"].values())
 
     if conversation:
         conversation.messages = new_messages
@@ -197,9 +205,13 @@ async def create_or_continue_conversation(
         conversation.verification_flags_count += flags_count
     else:
         conversation = AIConversation(
-            user_id=user_id, case_id=case_id, workflow=workflow,
-            messages=new_messages, tokens_used=result["tokens_used"],
-            model_used=result["model"], verification_flags_count=flags_count,
+            user_id=user_id,
+            case_id=case_id,
+            workflow=workflow,
+            messages=new_messages,
+            tokens_used=result["tokens_used"],
+            model_used=result["model"],
+            verification_flags_count=flags_count,
         )
         db.add(conversation)
 
@@ -209,12 +221,17 @@ async def create_or_continue_conversation(
     if result["response"] and len(result["response"]) > 100:
         try:
             from app.memory.memory_service import store_memory
+
             await store_memory(
-                db=db, content=result["response"],
-                source_type="conversation", source_id=str(conversation.id),
-                branch=workflow, user_id=user_id, tags=workflow,
+                db=db,
+                content=result["response"],
+                source_type="conversation",
+                source_id=str(conversation.id),
+                branch=workflow,
+                user_id=user_id,
+                tags=workflow,
             )
-        except Exception:
-            pass
+        except Exception as e:  # noqa: BLE001 — memory storage is non-critical, must not fail the response
+            logger.warning(f"store_memory failed for conversation {conversation.id}: {e}")
 
     return result, conversation

@@ -7,11 +7,11 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import RequirePermission
-from app.core.security import Permission, compute_audit_hash
+from app.core.security import Permission
 from app.db.session import get_db
 from app.models.models import AuditLog, User
 from app.schemas.schemas import AuditLogResponse
@@ -76,9 +76,7 @@ async def verify_audit_chain(
     Detects tampering if any entry's previous_hash doesn't match the
     prior entry's current_hash.
     """
-    result = await db.execute(
-        select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(last_n)
-    )
+    result = await db.execute(select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(last_n))
     entries = list(result.scalars().all())
 
     if not entries:
@@ -89,13 +87,15 @@ async def verify_audit_chain(
         current = entries[i]
         previous = entries[i + 1]
         if current.previous_hash != previous.current_hash:
-            breaks.append({
-                "position": i,
-                "current_id": str(current.id),
-                "expected_previous_hash": previous.current_hash,
-                "actual_previous_hash": current.previous_hash,
-                "timestamp": current.timestamp.isoformat(),
-            })
+            breaks.append(
+                {
+                    "position": i,
+                    "current_id": str(current.id),
+                    "expected_previous_hash": previous.current_hash,
+                    "actual_previous_hash": current.previous_hash,
+                    "timestamp": current.timestamp.isoformat(),
+                }
+            )
 
     return {
         "status": "intact" if not breaks else "BROKEN",

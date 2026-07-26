@@ -3,13 +3,14 @@ OroGest Lex — Auth Endpoints
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import RequireRole, get_current_user
 from app.core.config import get_settings
 from app.core.security import (
     Role,
@@ -20,7 +21,6 @@ from app.core.security import (
     verify_password,
 )
 from app.db.session import get_db
-from app.api.deps import get_current_user, RequireRole
 from app.models.models import User
 from app.schemas.schemas import (
     LoginRequest,
@@ -53,7 +53,7 @@ async def login(
         raise HTTPException(status_code=403, detail="Cuenta desactivada")
 
     # Update last login
-    user.last_login = datetime.now(timezone.utc)
+    user.last_login = datetime.now(UTC)
 
     # Create tokens
     token_data = {"sub": str(user.id), "role": user.role, "email": user.email}
@@ -83,9 +83,7 @@ async def refresh_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)
             raise HTTPException(status_code=401, detail="Token no es refresh")
 
         user_id = payload.get("sub")
-        result = await db.execute(
-            select(User).where(User.id == user_id, User.is_deleted == False)
-        )
+        result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
         user = result.scalar_one_or_none()
         if not user or not user.is_active:
             raise HTTPException(status_code=401, detail="Usuario inválido")
@@ -99,7 +97,11 @@ async def refresh_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)
             refresh_token=new_refresh,
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
-    except Exception:
+    except HTTPException:
+        # Re-raise our own deliberate 401s (invalid type / user) with their specific detail
+        raise
+    except Exception:  # noqa: BLE001 — token/DB failure boundary: HTTPException already handled above
+        # Only decode_token (JWTError) and the DB lookup should land here
         raise HTTPException(status_code=401, detail="Refresh token inválido")
 
 
@@ -169,7 +171,9 @@ async def change_password(
     current_user.hashed_password = hash_password(body.new_password)
 
     await create_audit_entry(
-        db, action="user.password_change", user_id=current_user.id,
+        db,
+        action="user.password_change",
+        user_id=current_user.id,
         ip_address=request.client.host if request.client else None,
     )
 
@@ -189,12 +193,16 @@ async def reset_password(
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     import secrets
+
     temp_password = secrets.token_urlsafe(12)
     user.hashed_password = hash_password(temp_password)
 
     await create_audit_entry(
-        db, action="user.password_reset", user_id=current_user.id,
-        resource_type="user", resource_id=str(user.id),
+        db,
+        action="user.password_reset",
+        user_id=current_user.id,
+        resource_type="user",
+        resource_id=str(user.id),
         ip_address=request.client.host if request.client else None,
     )
 

@@ -4,7 +4,7 @@ Unified search across cases, documents, and properties using trigram similarity.
 """
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, or_, func, cast, String
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
@@ -29,14 +29,19 @@ async def global_search(
     """
     pattern = f"%{q}%"
     results = []
-    offset = (page - 1) * per_page
 
     # ── Cases ──
     if scope in ("all", "cases"):
         stmt = (
             select(
-                Case.id, Case.internal_id, Case.caption, Case.branch,
-                Case.status, Case.client_name, Case.case_number, Case.updated_at,
+                Case.id,
+                Case.internal_id,
+                Case.caption,
+                Case.branch,
+                Case.status,
+                Case.client_name,
+                Case.case_number,
+                Case.updated_at,
             )
             .where(
                 Case.is_deleted == False,
@@ -52,23 +57,28 @@ async def global_search(
             .limit(per_page if scope == "cases" else 10)
         )
         for row in (await db.execute(stmt)).all():
-            results.append({
-                "type": "case",
-                "id": str(row.id),
-                "title": row.caption,
-                "subtitle": f"{row.branch} — {row.client_name}",
-                "status": row.status,
-                "internal_id": row.internal_id,
-                "case_number": row.case_number,
-                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
-            })
+            results.append(
+                {
+                    "type": "case",
+                    "id": str(row.id),
+                    "title": row.caption,
+                    "subtitle": f"{row.branch} — {row.client_name}",
+                    "status": row.status,
+                    "internal_id": row.internal_id,
+                    "case_number": row.case_number,
+                    "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+                }
+            )
 
     # ── Documents ──
     if scope in ("all", "documents"):
         stmt = (
             select(
-                Document.id, Document.title, Document.doc_type,
-                Document.version, Document.updated_at,
+                Document.id,
+                Document.title,
+                Document.doc_type,
+                Document.version,
+                Document.updated_at,
             )
             .where(
                 Document.is_deleted == False,
@@ -81,20 +91,26 @@ async def global_search(
             .limit(per_page if scope == "documents" else 10)
         )
         for row in (await db.execute(stmt)).all():
-            results.append({
-                "type": "document",
-                "id": str(row.id),
-                "title": row.title,
-                "subtitle": f"{row.doc_type} — v{row.version}",
-                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
-            })
+            results.append(
+                {
+                    "type": "document",
+                    "id": str(row.id),
+                    "title": row.title,
+                    "subtitle": f"{row.doc_type} — v{row.version}",
+                    "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+                }
+            )
 
     # ── Properties ──
     if scope in ("all", "properties"):
         stmt = (
             select(
-                Property.id, Property.title, Property.address,
-                Property.city, Property.status, Property.dd_risk_level,
+                Property.id,
+                Property.title,
+                Property.address,
+                Property.city,
+                Property.status,
+                Property.dd_risk_level,
                 Property.updated_at,
             )
             .where(
@@ -110,15 +126,17 @@ async def global_search(
             .limit(per_page if scope == "properties" else 10)
         )
         for row in (await db.execute(stmt)).all():
-            results.append({
-                "type": "property",
-                "id": str(row.id),
-                "title": row.title,
-                "subtitle": f"{row.address}, {row.city}",
-                "status": row.status,
-                "risk_level": row.dd_risk_level,
-                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
-            })
+            results.append(
+                {
+                    "type": "property",
+                    "id": str(row.id),
+                    "title": row.title,
+                    "subtitle": f"{row.address}, {row.city}",
+                    "status": row.status,
+                    "risk_level": row.dd_risk_level,
+                    "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+                }
+            )
 
     # Sort all by updated_at descending
     results.sort(key=lambda x: x.get("updated_at", ""), reverse=True)

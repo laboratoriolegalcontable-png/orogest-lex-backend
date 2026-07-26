@@ -4,24 +4,25 @@ Unit tests for core modules: security, orchestrator, audit.
 """
 
 import pytest
+
+from app.agents.orchestrator import (
+    Domain,
+    OrchestratorTask,
+    TaskState,
+    Urgency,
+    Workflow,
+    classify_request,
+)
 from app.core.security import (
-    Role,
     Permission,
-    hash_password,
-    verify_password,
+    Role,
+    compute_audit_hash,
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_password,
     role_has_permission,
-    compute_audit_hash,
-)
-from app.agents.orchestrator import (
-    classify_request,
-    Domain,
-    Urgency,
-    Workflow,
-    OrchestratorTask,
-    TaskState,
+    verify_password,
 )
 
 
@@ -113,7 +114,9 @@ class TestAuditHash:
 # ═══════════════════════════════════════════
 class TestClassifier:
     def test_penal_classification(self):
-        result = classify_request("Necesito redactar una nulidad para la causa penal por cadena de custodia")
+        result = classify_request(
+            "Necesito redactar una nulidad para la causa penal por cadena de custodia"
+        )
         assert result.domain == Domain.PENAL
         assert result.workflow == Workflow.ESCRITO_BLINDADO
 

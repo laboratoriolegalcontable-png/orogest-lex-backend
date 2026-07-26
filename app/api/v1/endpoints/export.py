@@ -6,7 +6,7 @@ Generate downloadable DOCX, CSV, and Markdown files from system data.
 import csv
 import io
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -14,10 +14,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import RequirePermission, get_current_user
+from app.api.deps import RequirePermission
 from app.core.security import Permission
 from app.db.session import get_db
-from app.models.models import Case, Document, Property, User
+from app.models.models import Case, Property, User
 from app.services.audit_service import create_audit_entry
 from app.services.export_service import (
     generate_carta_documento_docx,
@@ -65,10 +65,12 @@ async def export_escrito(
         petitorio=body.petitorio,
     )
 
-    filename = f"escrito_{body.causa.replace('/', '-')}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.docx"
+    filename = f"escrito_{body.causa.replace('/', '-')}_{datetime.now(UTC).strftime('%Y%m%d')}.docx"
 
     await create_audit_entry(
-        db, action="export.escrito", user_id=user.id,
+        db,
+        action="export.escrito",
+        user_id=user.id,
         details={"causa": body.causa, "filename": filename},
         ip_address=request.client.host if request.client else None,
     )
@@ -96,10 +98,12 @@ async def export_carta_documento(
         cuerpo=body.cuerpo,
     )
 
-    filename = f"carta_documento_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.docx"
+    filename = f"carta_documento_{datetime.now(UTC).strftime('%Y%m%d_%H%M')}.docx"
 
     await create_audit_entry(
-        db, action="export.carta_documento", user_id=user.id,
+        db,
+        action="export.carta_documento",
+        user_id=user.id,
         details={"destinatario": body.destinatario, "asunto": body.asunto},
         ip_address=request.client.host if request.client else None,
     )
@@ -142,11 +146,14 @@ async def export_due_diligence_report(
     )
 
     safe_title = prop.title.replace(" ", "_")[:30]
-    filename = f"DD_{safe_title}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.docx"
+    filename = f"DD_{safe_title}_{datetime.now(UTC).strftime('%Y%m%d')}.docx"
 
     await create_audit_entry(
-        db, action="export.due_diligence", user_id=user.id,
-        resource_type="property", resource_id=str(prop.id),
+        db,
+        action="export.due_diligence",
+        user_id=user.id,
+        resource_type="property",
+        resource_id=str(prop.id),
         ip_address=request.client.host if request.client else None,
     )
 
@@ -178,30 +185,54 @@ async def export_cases_csv(
     writer = csv.writer(output)
 
     # Header
-    writer.writerow([
-        "ID Interno", "Nro. Causa", "Carátula", "Rama", "Estado",
-        "Jurisdicción", "Tribunal", "Cliente", "Rol Cliente",
-        "Score Riesgo", "Próximo Vencimiento", "Creada", "Actualizada",
-    ])
+    writer.writerow(
+        [
+            "ID Interno",
+            "Nro. Causa",
+            "Carátula",
+            "Rama",
+            "Estado",
+            "Jurisdicción",
+            "Tribunal",
+            "Cliente",
+            "Rol Cliente",
+            "Score Riesgo",
+            "Próximo Vencimiento",
+            "Creada",
+            "Actualizada",
+        ]
+    )
 
     for c in cases:
-        writer.writerow([
-            c.internal_id, c.case_number or "", c.caption, c.branch, c.status,
-            c.jurisdiction or "", c.court or "", c.client_name, c.client_role or "",
-            c.risk_score if c.risk_score is not None else "",
-            c.next_deadline.isoformat() if c.next_deadline else "",
-            c.created_at.isoformat(), c.updated_at.isoformat(),
-        ])
+        writer.writerow(
+            [
+                c.internal_id,
+                c.case_number or "",
+                c.caption,
+                c.branch,
+                c.status,
+                c.jurisdiction or "",
+                c.court or "",
+                c.client_name,
+                c.client_role or "",
+                c.risk_score if c.risk_score is not None else "",
+                c.next_deadline.isoformat() if c.next_deadline else "",
+                c.created_at.isoformat(),
+                c.updated_at.isoformat(),
+            ]
+        )
 
     if request:
         await create_audit_entry(
-            db, action="export.cases_csv", user_id=user.id,
+            db,
+            action="export.cases_csv",
+            user_id=user.id,
             details={"count": len(cases), "branch_filter": branch},
             ip_address=request.client.host if request.client else None,
         )
 
     output.seek(0)
-    filename = f"causas_estudio_oro_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
+    filename = f"causas_estudio_oro_{datetime.now(UTC).strftime('%Y%m%d')}.csv"
 
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode("utf-8-sig")),  # BOM for Excel compatibility
@@ -225,29 +256,55 @@ async def export_properties_csv(
     output = io.StringIO()
     writer = csv.writer(output)
 
-    writer.writerow([
-        "Título", "Dirección", "Ciudad", "Provincia", "País", "Tipo",
-        "Estado", "Precio USD", "Precio ARS", "Folio Real",
-        "Riesgo DD", "DD Completado", "Propietario", "Creado",
-    ])
+    writer.writerow(
+        [
+            "Título",
+            "Dirección",
+            "Ciudad",
+            "Provincia",
+            "País",
+            "Tipo",
+            "Estado",
+            "Precio USD",
+            "Precio ARS",
+            "Folio Real",
+            "Riesgo DD",
+            "DD Completado",
+            "Propietario",
+            "Creado",
+        ]
+    )
 
     for p in props:
-        writer.writerow([
-            p.title, p.address, p.city, p.province, p.country, p.property_type,
-            p.status, p.asking_price_usd or "", p.asking_price_ars or "",
-            p.folio_real or "", p.dd_risk_level or "",
-            p.dd_completed_at.isoformat() if p.dd_completed_at else "",
-            p.owner_name or "", p.created_at.isoformat(),
-        ])
+        writer.writerow(
+            [
+                p.title,
+                p.address,
+                p.city,
+                p.province,
+                p.country,
+                p.property_type,
+                p.status,
+                p.asking_price_usd or "",
+                p.asking_price_ars or "",
+                p.folio_real or "",
+                p.dd_risk_level or "",
+                p.dd_completed_at.isoformat() if p.dd_completed_at else "",
+                p.owner_name or "",
+                p.created_at.isoformat(),
+            ]
+        )
 
     await create_audit_entry(
-        db, action="export.properties_csv", user_id=user.id,
+        db,
+        action="export.properties_csv",
+        user_id=user.id,
         details={"count": len(props)},
         ip_address=request.client.host if request.client else None,
     )
 
     output.seek(0)
-    filename = f"propiedades_estudio_oro_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
+    filename = f"propiedades_estudio_oro_{datetime.now(UTC).strftime('%Y%m%d')}.csv"
 
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode("utf-8-sig")),

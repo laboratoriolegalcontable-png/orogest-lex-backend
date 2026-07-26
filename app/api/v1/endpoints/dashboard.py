@@ -3,7 +3,7 @@ OroGest Lex — Dashboard Endpoints (Fase 14)
 Operational metrics, system health, and activity summary.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -33,131 +33,164 @@ async def dashboard_summary(
     Executive summary dashboard.
     Accessible to ABOGADO+ roles.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     last_7_days = now - timedelta(days=7)
-    last_30_days = now - timedelta(days=30)
 
     # ── Cases ──
-    total_cases = (await db.execute(
-        select(func.count()).select_from(Case).where(Case.is_deleted == False)
-    )).scalar() or 0
+    total_cases = (
+        await db.execute(select(func.count()).select_from(Case).where(Case.is_deleted == False))
+    ).scalar() or 0
 
-    active_cases = (await db.execute(
-        select(func.count()).select_from(Case).where(
-            Case.is_deleted == False, Case.status == "activa"
+    active_cases = (
+        await db.execute(
+            select(func.count())
+            .select_from(Case)
+            .where(Case.is_deleted == False, Case.status == "activa")
         )
-    )).scalar() or 0
+    ).scalar() or 0
 
     cases_by_branch = dict(
-        (await db.execute(
-            select(Case.branch, func.count())
-            .where(Case.is_deleted == False)
-            .group_by(Case.branch)
-        )).all()
+        (
+            await db.execute(
+                select(Case.branch, func.count())
+                .where(Case.is_deleted == False)
+                .group_by(Case.branch)
+            )
+        ).all()
     )
 
     cases_by_status = dict(
-        (await db.execute(
-            select(Case.status, func.count())
-            .where(Case.is_deleted == False)
-            .group_by(Case.status)
-        )).all()
+        (
+            await db.execute(
+                select(Case.status, func.count())
+                .where(Case.is_deleted == False)
+                .group_by(Case.status)
+            )
+        ).all()
     )
 
     # Upcoming deadlines (next 14 days)
-    upcoming_deadlines = (await db.execute(
-        select(Case.internal_id, Case.caption, Case.next_deadline, Case.branch)
-        .where(
-            Case.is_deleted == False,
-            Case.next_deadline.isnot(None),
-            Case.next_deadline <= now + timedelta(days=14),
-            Case.next_deadline >= now,
+    upcoming_deadlines = (
+        await db.execute(
+            select(Case.internal_id, Case.caption, Case.next_deadline, Case.branch)
+            .where(
+                Case.is_deleted == False,
+                Case.next_deadline.isnot(None),
+                Case.next_deadline <= now + timedelta(days=14),
+                Case.next_deadline >= now,
+            )
+            .order_by(Case.next_deadline.asc())
+            .limit(10)
         )
-        .order_by(Case.next_deadline.asc())
-        .limit(10)
-    )).all()
+    ).all()
 
     # High risk cases
-    high_risk_cases = (await db.execute(
-        select(func.count()).select_from(Case).where(
-            Case.is_deleted == False,
-            Case.risk_score.isnot(None),
-            Case.risk_score >= 70,
+    high_risk_cases = (
+        await db.execute(
+            select(func.count())
+            .select_from(Case)
+            .where(
+                Case.is_deleted == False,
+                Case.risk_score.isnot(None),
+                Case.risk_score >= 70,
+            )
         )
-    )).scalar() or 0
+    ).scalar() or 0
 
     # ── Documents ──
-    total_documents = (await db.execute(
-        select(func.count()).select_from(Document).where(Document.is_deleted == False)
-    )).scalar() or 0
-
-    docs_last_7 = (await db.execute(
-        select(func.count()).select_from(Document).where(
-            Document.is_deleted == False,
-            Document.created_at >= last_7_days,
+    total_documents = (
+        await db.execute(
+            select(func.count()).select_from(Document).where(Document.is_deleted == False)
         )
-    )).scalar() or 0
+    ).scalar() or 0
+
+    docs_last_7 = (
+        await db.execute(
+            select(func.count())
+            .select_from(Document)
+            .where(
+                Document.is_deleted == False,
+                Document.created_at >= last_7_days,
+            )
+        )
+    ).scalar() or 0
 
     # ── Properties ──
-    total_properties = (await db.execute(
-        select(func.count()).select_from(Property).where(Property.is_deleted == False)
-    )).scalar() or 0
+    total_properties = (
+        await db.execute(
+            select(func.count()).select_from(Property).where(Property.is_deleted == False)
+        )
+    ).scalar() or 0
 
     properties_by_risk = dict(
-        (await db.execute(
-            select(Property.dd_risk_level, func.count())
-            .where(Property.is_deleted == False, Property.dd_risk_level.isnot(None))
-            .group_by(Property.dd_risk_level)
-        )).all()
+        (
+            await db.execute(
+                select(Property.dd_risk_level, func.count())
+                .where(Property.is_deleted == False, Property.dd_risk_level.isnot(None))
+                .group_by(Property.dd_risk_level)
+            )
+        ).all()
     )
 
     # ── AI Usage ──
-    total_ai_conversations = (await db.execute(
-        select(func.count()).select_from(AIConversation)
-    )).scalar() or 0
+    total_ai_conversations = (
+        await db.execute(select(func.count()).select_from(AIConversation))
+    ).scalar() or 0
 
-    total_tokens = (await db.execute(
-        select(func.sum(AIConversation.tokens_used))
-    )).scalar() or 0
+    total_tokens = (await db.execute(select(func.sum(AIConversation.tokens_used)))).scalar() or 0
 
-    ai_last_7 = (await db.execute(
-        select(func.count()).select_from(AIConversation).where(
-            AIConversation.created_at >= last_7_days,
+    ai_last_7 = (
+        await db.execute(
+            select(func.count())
+            .select_from(AIConversation)
+            .where(
+                AIConversation.created_at >= last_7_days,
+            )
         )
-    )).scalar() or 0
+    ).scalar() or 0
 
     ai_by_workflow = dict(
-        (await db.execute(
-            select(AIConversation.workflow, func.count())
-            .where(AIConversation.workflow.isnot(None))
-            .group_by(AIConversation.workflow)
-        )).all()
+        (
+            await db.execute(
+                select(AIConversation.workflow, func.count())
+                .where(AIConversation.workflow.isnot(None))
+                .group_by(AIConversation.workflow)
+            )
+        ).all()
     )
 
-    total_verification_flags = (await db.execute(
-        select(func.sum(AIConversation.verification_flags_count))
-    )).scalar() or 0
+    total_verification_flags = (
+        await db.execute(select(func.sum(AIConversation.verification_flags_count)))
+    ).scalar() or 0
 
     # ── Users ──
-    total_users = (await db.execute(
-        select(func.count()).select_from(User).where(
-            User.is_deleted == False, User.is_active == True
+    total_users = (
+        await db.execute(
+            select(func.count())
+            .select_from(User)
+            .where(User.is_deleted == False, User.is_active == True)
         )
-    )).scalar() or 0
+    ).scalar() or 0
 
     # ── Audit ──
-    audit_last_24h = (await db.execute(
-        select(func.count()).select_from(AuditLog).where(
-            AuditLog.timestamp >= now - timedelta(hours=24),
+    audit_last_24h = (
+        await db.execute(
+            select(func.count())
+            .select_from(AuditLog)
+            .where(
+                AuditLog.timestamp >= now - timedelta(hours=24),
+            )
         )
-    )).scalar() or 0
+    ).scalar() or 0
 
     # Recent activity (last 10 audit entries)
-    recent_activity = (await db.execute(
-        select(AuditLog.action, AuditLog.resource_type, AuditLog.timestamp, AuditLog.user_id)
-        .order_by(AuditLog.timestamp.desc())
-        .limit(10)
-    )).all()
+    recent_activity = (
+        await db.execute(
+            select(AuditLog.action, AuditLog.resource_type, AuditLog.timestamp, AuditLog.user_id)
+            .order_by(AuditLog.timestamp.desc())
+            .limit(10)
+        )
+    ).all()
 
     return {
         "generated_at": now.isoformat(),
@@ -227,16 +260,13 @@ async def system_health(
     try:
         await db.execute(select(func.now()))
         health["checks"]["database"] = {"status": "ok"}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — health check: one failing probe must not crash the others
         health["checks"]["database"] = {"status": "error", "detail": str(e)[:100]}
         health["status"] = "degraded"
 
     # Audit chain integrity (check last 10 entries)
     try:
-        from app.core.security import compute_audit_hash
-        result = await db.execute(
-            select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(10)
-        )
+        result = await db.execute(select(AuditLog).order_by(AuditLog.timestamp.desc()).limit(10))
         entries = list(result.scalars().all())
 
         chain_valid = True
@@ -252,13 +282,16 @@ async def system_health(
             "entries_checked": len(entries),
             "chain_intact": chain_valid,
         }
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — health check: one failing probe must not crash the others
         health["checks"]["audit_chain"] = {"status": "error", "detail": str(e)[:100]}
 
     # Claude API check (just verify key is configured)
     from app.core.config import get_settings
+
     settings = get_settings()
-    claude_configured = bool(settings.CLAUDE_API_KEY and settings.CLAUDE_API_KEY != "sk-ant-CAMBIAR")
+    claude_configured = bool(
+        settings.CLAUDE_API_KEY and settings.CLAUDE_API_KEY != "sk-ant-CAMBIAR"
+    )
     health["checks"]["claude_api"] = {
         "status": "ok" if claude_configured else "not_configured",
         "model": settings.CLAUDE_MODEL,

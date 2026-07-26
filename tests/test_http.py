@@ -5,13 +5,11 @@ These tests mock the database layer to run without PostgreSQL.
 """
 
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.security import Role, create_access_token, hash_password
+from app.core.security import Role, create_access_token
 from app.main import app
 
 
@@ -22,29 +20,35 @@ def client():
 
 @pytest.fixture
 def director_token():
-    return create_access_token({
-        "sub": str(uuid.uuid4()),
-        "role": Role.DIRECTOR.value,
-        "email": "diego@estudiooro.com",
-    })
+    return create_access_token(
+        {
+            "sub": str(uuid.uuid4()),
+            "role": Role.DIRECTOR.value,
+            "email": "diego@estudiooro.com",
+        }
+    )
 
 
 @pytest.fixture
 def abogado_token():
-    return create_access_token({
-        "sub": str(uuid.uuid4()),
-        "role": Role.ABOGADO.value,
-        "email": "abogado@estudiooro.com",
-    })
+    return create_access_token(
+        {
+            "sub": str(uuid.uuid4()),
+            "role": Role.ABOGADO.value,
+            "email": "abogado@estudiooro.com",
+        }
+    )
 
 
 @pytest.fixture
 def pasante_token():
-    return create_access_token({
-        "sub": str(uuid.uuid4()),
-        "role": Role.PASANTE.value,
-        "email": "pasante@estudiooro.com",
-    })
+    return create_access_token(
+        {
+            "sub": str(uuid.uuid4()),
+            "role": Role.PASANTE.value,
+            "email": "pasante@estudiooro.com",
+        }
+    )
 
 
 # ═══════════════════════════════════════════
@@ -112,9 +116,10 @@ class TestAuthRequired:
         assert resp.status_code in (401, 403)
 
     def test_batch_requires_auth(self, client):
-        resp = client.post("/api/v1/batch/cases/update-status", json={
-            "case_ids": [str(uuid.uuid4())], "new_status": "archivada"
-        })
+        resp = client.post(
+            "/api/v1/batch/cases/update-status",
+            json={"case_ids": [str(uuid.uuid4())], "new_status": "archivada"},
+        )
         assert resp.status_code in (401, 403)
 
     def test_export_requires_auth(self, client):
@@ -144,15 +149,15 @@ class TestLoginValidation:
         assert resp.status_code == 422  # Validation error
 
     def test_login_short_password(self, client):
-        resp = client.post("/api/v1/auth/login", json={
-            "email": "test@test.com", "password": "short"
-        })
+        resp = client.post(
+            "/api/v1/auth/login", json={"email": "test@test.com", "password": "short"}
+        )
         assert resp.status_code == 422  # min_length=8
 
     def test_login_invalid_email(self, client):
-        resp = client.post("/api/v1/auth/login", json={
-            "email": "not-an-email", "password": "12345678"
-        })
+        resp = client.post(
+            "/api/v1/auth/login", json={"email": "not-an-email", "password": "12345678"}
+        )
         assert resp.status_code == 422
 
 
@@ -172,11 +177,14 @@ class TestCalculadoraHTTP:
         assert resp.status_code in (401, 422, 500)
 
     def test_calculadora_route_exists(self, client):
-        resp = client.post("/api/v1/calculadora/indemnizacion", json={
-            "fecha_ingreso": "2020-01-01",
-            "fecha_egreso": "2025-03-15",
-            "mejor_remuneracion_mensual": 500000,
-        })
+        resp = client.post(
+            "/api/v1/calculadora/indemnizacion",
+            json={
+                "fecha_ingreso": "2020-01-01",
+                "fecha_egreso": "2025-03-15",
+                "mejor_remuneracion_mensual": 500000,
+            },
+        )
         # Should be 401 (no token), not 404
         assert resp.status_code != 404
 
@@ -186,24 +194,30 @@ class TestCalculadoraHTTP:
 # ═══════════════════════════════════════════
 class TestExportValidation:
     def test_escrito_export_route_exists(self, client):
-        resp = client.post("/api/v1/export/escrito", json={
-            "tribunal": "TOC N° 5",
-            "causa": "28979/2020",
-            "caratula": "N.N. s/ robo",
-            "objeto": "Planteo de nulidad absoluta de la prueba digital",
-            "hechos": "El día 15/03/2024, personal policial extrajo datos sin orden",
-            "derecho": "Art. 18 CN, Art. 168 CPPN [VERIFICAR]",
-            "petitorio": "1) Declarar la nulidad. 2) Sobreseer al imputado.",
-        })
+        resp = client.post(
+            "/api/v1/export/escrito",
+            json={
+                "tribunal": "TOC N° 5",
+                "causa": "28979/2020",
+                "caratula": "N.N. s/ robo",
+                "objeto": "Planteo de nulidad absoluta de la prueba digital",
+                "hechos": "El día 15/03/2024, personal policial extrajo datos sin orden",
+                "derecho": "Art. 18 CN, Art. 168 CPPN [VERIFICAR]",
+                "petitorio": "1) Declarar la nulidad. 2) Sobreseer al imputado.",
+            },
+        )
         assert resp.status_code != 404  # Route exists (will be 401)
 
     def test_carta_documento_route_exists(self, client):
-        resp = client.post("/api/v1/export/carta-documento", json={
-            "destinatario": "Sr. Juan Pérez",
-            "domicilio_destinatario": "Av. Corrientes 1234, CABA",
-            "asunto": "Intimación por incumplimiento",
-            "cuerpo": "Por la presente se lo intima fehacientemente a cumplir con el contrato.",
-        })
+        resp = client.post(
+            "/api/v1/export/carta-documento",
+            json={
+                "destinatario": "Sr. Juan Pérez",
+                "domicilio_destinatario": "Av. Corrientes 1234, CABA",
+                "asunto": "Intimación por incumplimiento",
+                "cuerpo": "Por la presente se lo intima fehacientemente a cumplir con el contrato.",
+            },
+        )
         assert resp.status_code != 404
 
 
@@ -212,18 +226,24 @@ class TestExportValidation:
 # ═══════════════════════════════════════════
 class TestWebhookRoutes:
     def test_whatsapp_inbound_without_secret(self, client):
-        resp = client.post("/api/v1/webhooks/whatsapp/inbound", json={
-            "phone": "+541112345678",
-            "message": "Necesito un abogado penal urgente",
-        })
+        resp = client.post(
+            "/api/v1/webhooks/whatsapp/inbound",
+            json={
+                "phone": "+541112345678",
+                "message": "Necesito un abogado penal urgente",
+            },
+        )
         # Should reject without webhook secret
         assert resp.status_code == 401
 
     def test_n8n_trigger_without_secret(self, client):
-        resp = client.post("/api/v1/webhooks/n8n/trigger", json={
-            "event": "test_event",
-            "data": {"key": "value"},
-        })
+        resp = client.post(
+            "/api/v1/webhooks/n8n/trigger",
+            json={
+                "event": "test_event",
+                "data": {"key": "value"},
+            },
+        )
         assert resp.status_code == 401
 
 
@@ -252,9 +272,9 @@ class TestRateLimitingHTTP:
     def test_login_rate_limit_allows_initial(self, client):
         # First few requests should work (get 401 for bad creds, not 429)
         for _ in range(3):
-            resp = client.post("/api/v1/auth/login", json={
-                "email": "test@test.com", "password": "12345678"
-            })
+            resp = client.post(
+                "/api/v1/auth/login", json={"email": "test@test.com", "password": "12345678"}
+            )
             assert resp.status_code != 429  # Not rate limited yet
 
 

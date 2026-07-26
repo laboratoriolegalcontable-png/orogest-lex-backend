@@ -9,7 +9,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.30",
     "asyncpg>=0.29.0",
     "alembic>=1.13.0",
-    "pydantic>=2.7.0",
+    "pydantic[email]>=2.7.0",
     "pydantic-settings>=2.3.0",
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
@@ -30,9 +30,31 @@ dev = [
     "ruff>=0.4.0",
 ]
 
+[tool.setuptools.packages.find]
+# Without this, setuptools' flat-layout auto-discovery sees both `app/` and
+# `alembic/` (migration scripts, not a package) as top-level packages and
+# refuses to build ("Multiple top-level packages discovered in a flat-layout").
+# Only `app` is the installable package; alembic/scripts/tests are run in
+# place via `python -m` / the `alembic` CLI, not imported as installed code.
+include = ["app*"]
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+
+[tool.ruff.lint]
+# E712: "avoid == True/False" is a false positive across this codebase — every
+# occurrence is a SQLAlchemy ORM column comparison inside select()/where()
+# (e.g. `Case.is_deleted == False`), which builds a SQL predicate. Ruff's
+# suggested rewrite (`not Case.is_deleted`) evaluates Python truthiness of the
+# Column object instead and silently breaks the query, so the rule is disabled
+# rather than "fixed".
+# B008: FastAPI's dependency-injection idiom is `param: T = Depends(...)` (and
+# `= Query(...)`, `= Body(...)`, etc.) — the call in the default *is* the API,
+# evaluated once per request by FastAPI's own DI system, not a mutable-default
+# bug. Every occurrence in this codebase is this pattern; rewriting ~200 route
+# signatures to dodge the rule would fight the framework for no safety gain.
+ignore = ["E712", "B008"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
